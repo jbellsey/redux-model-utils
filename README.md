@@ -28,7 +28,7 @@ usually omit the second parameter.
 
 ```javascript
 let unsubscribe = users.subscribe(users.accessors.userList, (users, previousUserList) => {
-    console.log('Some deep nested property changed from', previousUserList, 'to', users);
+    console.log('User list changed from', previousUserList, 'to', users);
 });
 ```
 
@@ -104,12 +104,15 @@ or because I haven't had the need to use React yet. Therefore this library neith
 depends on React or expects you to be using it. You should be able to make good use
 of the tools and patters regardless how you manage your views.
 
+And the sample code all uses CommonJS module management, because I'm still using
+browserify for most of my projects. It will work fine with JSPM and SystemJS.
+
 I've even used this with a jQuery app. Dinosaur.
 
 # Model structure
 
 Part of the power of this library is not just in the methods it provides, but in
-the structure it uses for building models.
+the structure it imposes on your models.
 
 ```javascript
 var model = {
@@ -131,22 +134,22 @@ var model = {
 module.exports = reduxUtils.modelBuilder(model);
 ```
 
-You must provide a **name** for your model, which must be globally unique, but
+You must provide a `name` for your model, which must be globally unique, but
 not necessarily sluggish. (I.e., it can have mixed case and/or punctuation.)
 
-You must have a **reducer** property, which points to your reducer function.
-There is nothing magic about its signature; just build a normal reducer. See the
+You must have a `reducer` property, which points to your reducer function.
+There is nothing special about its signature; just build a normal reducer. See the
 full example below.
 
-You must provide a list of **accessors**. These are strings, described in the next
+You must provide a list of `accessors`. These are strings, described in the next
 section. One accessor is needed for each property that needs to be changed (in your
 reducer) or observed (in your view).
 
-You should (but do not need to) provide a list of **actions**. These are the publicly 
+You should (but do not need to) provide a list of `actions`. These are the publicly 
 available actions for interacting with your model. 
 
 You can optionally pass in some **magic triggers**. At present, there is only one:
-a boolean called **waitable**. If you set it to true, your model will be modified
+a boolean called `waitable`. If you set it to true, your model will be modified
 to provide two new actions (`wait()` and `stopWaiting()`) and an observable 
 property (`waiting`). Usage is shown in the full example below.
 
@@ -232,8 +235,8 @@ let actionCodes = {
 };
 // the action creators are Standard Issue. we just wrap them into a mapping object
 let actions = {
-    incr:  reduxUtils.makeActionCreator(actionCodes.CTR_INCR, 'value'),
-    decr:  reduxUtils.makeActionCreator(actionCodes.CTR_DECR, 'value')
+    incr: reduxUtils.makeActionCreator(actionCodes.CTR_INCR, 'value'),
+    decr: reduxUtils.makeActionCreator(actionCodes.CTR_DECR, 'value')
 };
 ```
 
@@ -244,7 +247,12 @@ by calling `model.actions.incr(4)`, for example.
 
 Here's a full example of a model which manages the geolocation of your device.
 It's simple but shows off many of the features of this library, as well as some
-useful patterns for constructing models.
+useful patterns for constructing models. 
+
+This model has one public action (`getLocation()`),
+which triggers an async request to the browser for its latitude and longitude.
+It has one observable property (`location`), which is an object holding the device's
+coordinates.
 
 The view code will be shown next.
 
@@ -270,7 +278,7 @@ const // prepare an empty store. you're doing this already.
       },
       // this list of actions (only one in this case) is exported and public. there are
       // two additional public actions (wait and stopWaiting) that are installed because
-      // of the "waiting" property on the export statement below.
+      // we set the "waitable" property on the export statement below.
       actions = {
           // querying the device location is async. the action itself takes no parameters.
           getLocation: reduxUtils.makeAsyncAction(() => {
@@ -304,7 +312,7 @@ function reducer(state = initialState, action = 0) {
 
     switch (action.type) {
         case actionCodes.SET_LOCATION:
-            // use the provided method "copyAndAssign" to keep the reducer pure.
+            // use the provided function "copyAndAssign" to keep the reducer pure.
             // note the use of "accessors.location", which tells the copier what property
             // to overwrite. in other words, here is the impure version of what we're doing:
             //      state.location = action.location
@@ -313,7 +321,7 @@ function reducer(state = initialState, action = 0) {
     return state;
 }
 
-// run the model object through a custom tool, which massages it into shape
+// run the model object through a custom tool ("modelBuilder"), which whips it into shape
 module.exports = reduxUtils.modelBuilder({
 
     name: 'geo',
@@ -368,7 +376,8 @@ the section above for a full explanation.
 
 ##### modelBuilder(model)
 
-You must run your model through this utility before exporting it.  
+You must run your model through this utility before exporting it. It has no
+options.
 
 ```javascript
 module.exports = reduxUtils.modelBuilder({
@@ -378,12 +387,11 @@ module.exports = reduxUtils.modelBuilder({
     accessors
 });
 ```
-There are no other options.
 
 ##### makeActionCreator(type, ...argNames)
 
 You're probably already doing this. See [the docs](http://rackt.org/redux/docs/basics/Actions.html).
-The library version is not any different.
+This version is not any different.
 
 ```javascript
 let actions = {
@@ -404,18 +412,20 @@ Here's a common pattern for running an AJAX query:
 
 ```javascript
 
-// these actions are used inside async actions. they are not exposed on the model.
+// these private actions are used inside async actions. they are not exposed.
 //
 let privateActions = {
     
-    // this might invalidate the cache
+    // this might invalidate the cache, for example
     startQuery: reduxUtils.makeActionCreator('QU_START'),
     
     // this will store the results in your model
     endQuery:   reduxUtils.makeActionCreator('QU_END', 'results')
 },
 let actions = {
-    // make an async action that takes one argument ('username')
+    // make an async action that takes one argument ('username').
+    // it will be invoked like this:
+    //      model.query('harry');
     query: reduxUtils.makeAsyncAction(argObj => {
 
         // run a synchronous action, perhaps to invalidate the cache.
@@ -486,16 +496,15 @@ let store = {
 };
 
 let newStore = reduxUtils.copyAndAssign(store, 'preferences.fontSize', 'small')
-
 // => {userID: 0, preferences: {colorScheme: 'dark', fontSize: 'small'}}
 ```
 
 This function will probably be used in your reducer, for every action that uses
-a property that isn't an array. Here is an example that has strings and arrays
+a property that isn't an array. Here is an example that has a string and an array
 in the store:
 
 ```javascript
-var   reduxUtils  = require('redux-utils');
+var reduxUtils  = require('redux-utils');
 
 const
     initialState = {
@@ -522,7 +531,8 @@ function reducer(state = initialState, action = 0) {
 
     switch (action.type) {
 
-        // for arrays, we use 'copy()' directly on the state object to duplicate it first
+        // for arrays, we use 'copy()' directly on the state object to duplicate it first.
+        // accessor strings aren't useful here; we directly manipulate the new state object
         case actionCodes.ADD_TODO:
             state = reduxUtils.copy(state);
             state.todos.push(action.text);
@@ -606,6 +616,8 @@ passing to `combineReducers()`. The result is an object whose keys are the
 model names (provided by you as a `name` property on each model), and whose
 values are the reducers for each model.
 
+You can do this manually if you prefer.
+
 ##### setStore(store)
 
 You must call this immediately after creating your store. That is all.
@@ -634,6 +646,9 @@ The options object currently accepts only one attribute: `noInit`. If you set
 this to `true`, your callback will not be invoked at initalization time. In most
 cases, you should omit this option, as you'll want your callback to get initialized
 with a starting value.
+
+The `subscribe` function passes back the same `unsubscribe` hook that you get from
+calling it directly on a redux store.
 
 Here's some code from a view. It's not complete, but shows the typical subscription
 pattern.
