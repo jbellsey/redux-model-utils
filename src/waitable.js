@@ -8,15 +8,15 @@ function makeWaitable(model) {
     //------ ACTION CODES (private)
     // make some custom action codes
     let thisWaitableID        = waitableCounter++,
-        actionCodeWait        = 'WAITABLE_WAIT_' + thisWaitableID,
-        actionCodeStopWaiting = 'WAITABLE_STOP_' + thisWaitableID;
+        actionCodeWait        = `WAITABLE_WAIT_${model.name}_${thisWaitableID}`,
+        actionCodeStopWaiting = `WAITABLE_STOP_${model.name}_${thisWaitableID}`;
 
     //----- INITIAL STORE STRUCTURE
     let initialState = {waiting: false};
 
     //----- ACCESSORS
-    // we put all waitable properties into a custom object in the store.
-    // these are public, to allow clients to subscribe to changes
+    // the waitable flag is merged into the model's store. it's public,
+    // which means clients can subscribe to changes
     let waitingAccessor = 'waiting';
     if (typeof model.accessors !== 'object')
         model.accessors = {};

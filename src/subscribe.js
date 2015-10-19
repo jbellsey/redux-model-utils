@@ -20,8 +20,10 @@ function subscribe(accessorString, cb, opts) {
         val     = () => object.lookup(store().getState(), accessorString),
         handler = () => {
             let currentValue = val();
-            if (previousValue !== currentValue)
-                cb(previousValue = currentValue);
+            if (previousValue !== currentValue) {
+                cb(currentValue, previousValue);
+                previousValue = currentValue
+            }
         };
 
     // normally, we invoke the callback on startup, so that it gets
@@ -30,6 +32,7 @@ function subscribe(accessorString, cb, opts) {
     if (!opts || !!opts.noInit)
         cb(previousValue = val());
 
+    // return the unsubscribe function to the caller
     return store().subscribe(handler);
 }
 
