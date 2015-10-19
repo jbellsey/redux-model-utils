@@ -1,13 +1,13 @@
 var deepAssign = require('deep-assign'),
     object     = require('./object'),
-    actions    = require('./actions');
+    actions    = require('./actions'),
+    counter    = 1;
 
-let waitableCounter = 1;
 function makeWaitable(model) {
 
     //------ ACTION CODES (private)
     // make some custom action codes
-    let thisWaitableID        = waitableCounter++,
+    let thisWaitableID        = counter++,
         actionCodeWait        = `WAITABLE_WAIT_${model.name}_${thisWaitableID}`,
         actionCodeStopWaiting = `WAITABLE_STOP_${model.name}_${thisWaitableID}`;
 
@@ -26,7 +26,7 @@ function makeWaitable(model) {
     // add some new actions to the model's public api
     if (typeof model.actions !== 'object')
         model.actions = {};
-    model.actions.wait = actions.makeActionCreator(actionCodeWait);
+    model.actions.wait        = actions.makeActionCreator(actionCodeWait);
     model.actions.stopWaiting = actions.makeActionCreator(actionCodeStopWaiting);
 
     //----- REDUCER
@@ -47,5 +47,10 @@ function makeWaitable(model) {
 }
 
 module.exports = {
-    makeWaitable
+
+    // this is only available inside the library
+    makeWaitable,
+
+    // no public exports to end-users
+    publicAPI: {}
 };

@@ -1,24 +1,34 @@
 //---- store management
 //
-// several modules need access to the main store.
-// so users must call setStore() before running any actions;
-// ideally, immediately after creating the store.
+// several of our modules need access to the main store.
+// users must call setStore() immediately after creating the store.
 //
 
 var store;
 
-// takes an array of models, and builds a map of reducers for passing
-// to combineReducers(). for example:
-//
-//      var models        = [require('./models/geo'), require('./models/reddit')],
-//          reducerMap    = buildReducerMap(models),
-//          masterReducer = redux.combineReducers(reducerMap),
-//          masterStore   = createStoreWithMiddleware(masterReducer);
-//
+/*
+    takes an array of models, and builds a map of reducers for passing
+    to combineReducers(). for example:
+
+        var models        = [require('./models/geo'), require('./models/reddit')],
+            reducerMap    = buildReducerMap(models),
+            masterReducer = redux.combineReducers(reducerMap),
+            masterStore   = createStoreWithMiddleware(masterReducer);
+
+    the result is an object like this:
+
+        reducerMap = {
+            'geo':    geo.reducer,
+            'reddit': reddit.reducer
+        }
+
+    see [model.js] as well, where we modify the model's accessors to account
+    for how stores are now one level deeper.
+*/
 function buildReducerMap(modelArray) {
-    return modelArray.reduce((obj, model) => {
-        obj[model.name] = model.reducer;
-        return obj;
+    return modelArray.reduce((map, model) => {
+        map[model.name] = model.reducer;
+        return map;
     }, {});
 }
 

@@ -3,21 +3,30 @@ var store  = require('./store').getStore,
 
 
 /**
- * Custom wrapper around store.subscribe. This is patched into every model (see modelBuilder, below)
- *
- * @param accessorString{string} : dot-notation, used to find the property of interest (e.g., "appData.user.id")
- * @param cb{function}           : function will be called only when the value changes. signature: (newValue) => {}
- * @param opts{object}           : subscription options. currently: {noInit:true} to suppress invoking the callback
- *                                  once at initialization time
- * @returns {*}                  : passes back the return from store.subscribe() -- i.e., the unsubscribe handler
+ * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
  *
  * Usage:
- *      myModel.subscribe(myModel.accessors.userID, (newUserID) => {log(newUserID);});
+ *      myModel.subscribe(myModel.accessors.userID, (newUserID) => {log(newUserID)});
+ *
+ * @param accessor {string}
+ * A string in dot notation. This is used to find the property of interest in your store (e.g., "user.id")
+ *
+ * @param cb {function}
+ * This function will be called only when the observed value changes. Its signature is simple:
+ *      (newValue, previousValue) => {}
+ *
+ * @param opts{object}
+ * Subscription options. Currently only one option is available:
+ *      {noInit:true} to suppress invoking the callback once at initialization time
+ *
+ * @returns {function}
+ * Passes back the return from store.subscribe() -- i.e., the unsubscribe function
+ *
  */
-function subscribe(accessorString, cb, opts) {
+function subscribe(accessor, cb, opts) {
 
     var previousValue,
-        val     = () => object.lookup(store().getState(), accessorString),
+        val     = () => object.lookup(store().getState(), accessor),
         handler = () => {
             let currentValue = val();
             if (previousValue !== currentValue) {
