@@ -1,5 +1,6 @@
 var deepAssign = require('deep-assign'),
-    object = require('./object');
+    object     = require('./object'),
+    actions    = require('./actions');
 
 let waitableCounter = 1;
 function makeWaitable(model) {
@@ -25,8 +26,8 @@ function makeWaitable(model) {
     // add some new actions to the model's public api
     if (typeof model.actions !== 'object')
         model.actions = {};
-    model.actions.wait = makeActionCreator(actionCodeWait);
-    model.actions.stopWaiting = makeActionCreator(actionCodeStopWaiting);
+    model.actions.wait = actions.makeActionCreator(actionCodeWait);
+    model.actions.stopWaiting = actions.makeActionCreator(actionCodeStopWaiting);
 
     //----- REDUCER
     // add our handlers to the reducer

@@ -1,9 +1,18 @@
-var deepAssign = require('deep-assign'),
-    actions    = require('./actions'),
-    store      = require('./store'),
-    object     = require('./object'),
-    model      = require('./model'),
-    subscribe  = require('./subscribe'),
-    waitable   = require('./waitable');
+var components = [
+        require('./actions'),
+        require('./store'),
+        require('./object'),
+        require('./model'),
+        require('./subscribe'),
+        require('./waitable')
+    ],
+    output = {};
 
-module.exports = deepAssign({}, actions, store, object, model, subscribe, waitable);
+// shallow merge
+components.forEach(module => {
+    Object.keys(module).forEach(key => {
+        output[key] = module[key];
+    })
+});
+
+module.exports = output;

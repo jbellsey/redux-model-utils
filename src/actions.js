@@ -44,3 +44,9 @@ function makeAsyncAction(cb, ...argNames) {
         store().dispatch(thunk);
     }
 }
+
+module.exports = {
+    makeAction,
+    makeActionCreator,
+    makeAsyncAction
+}
