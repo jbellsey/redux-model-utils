@@ -4,7 +4,8 @@ var components = [
         require('./object'),
         require('./model'),
         require('./subscribe'),
-        require('./waitable')
+        require('./waitable'),
+        require('./undoable')
     ],
     output = {};
 

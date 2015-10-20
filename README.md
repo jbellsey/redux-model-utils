@@ -60,13 +60,18 @@ let query = reduxUtils.makeAsyncAction(args => {
 query('jeff');
 ```
 
-### Add a "waiting" flag
+### Add instant functionality
 
 Adding a spinner to your async operations just got trivial. In one
 line of code, you can add two actions to your model (`wait()` and 
 `stopWaiting()`) and a boolean flag to the store (`waiting`).
 
-The code for this one is super-simple, but needs some explanation, so we'll defer for a bit.
+Similarly, adding undo to your model with the [redux-undo](https://github.com/omnidan/redux-undo)
+is super-easy. With one line of code, you get `undo()` and `redo()`
+actions, as well as observables for tracking the size of the undo stack.
+
+The code required to add these features is very simple, but needs some 
+explanation, so we'll defer for a bit.
  
 ### Common object-management utilities
 
@@ -91,11 +96,12 @@ npm install --save jbellsey/redux-utils
 
 In addition, you must make the following changes or additions to your code:
 
-* If you use our async action creator, you must install and set up `redux-thunk`
+* If you use the async action creator, you must install and set up `redux-thunk`
+* If you use the undoable feature, you must install `redux-undo`
 * You must use `combineReducers()` to build your map of reducers, even if you only have one.
   The library expects the stores to be managed separately, one per model, which `combineReducers()`
   does for you. There is a utility method `buildReducerMap()` to make this easy.
-* Immediately after creating your store, call `setStore()`
+* Immediately after creating your store, you must call `setStore()`
 
 # Context
 
@@ -142,8 +148,8 @@ There is nothing special about its signature; just build a normal reducer. See t
 full example below.
 
 You must provide a list of `accessors`. These are strings, described in the next
-section. One accessor is needed for each property that needs to be changed (in your
-reducer) or observed (in your view).
+section. One accessor is needed for each observable property. You may also choose
+to define accessors for properties that are only needed inside the reducer.
 
 You should (but do not need to) provide a list of `actions`. These are the publicly 
 available actions for interacting with your model. 
