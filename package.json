@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/jbellsey/redux-utils#readme",
   "dependencies": {
-    "deep-assign": "^1.0.0",
+    "deep-assign": "^2.0.0",
     "redux": "^3.0.2"
   },
   "devDependencies": {

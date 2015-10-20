@@ -14,13 +14,13 @@ function makeWaitable(model) {
     //----- INITIAL STORE STRUCTURE
     let initialState = {waiting: false};
 
-    //----- ACCESSORS
+    //----- SELECTORS
     // the waitable flag is merged into the model's store. it's public,
     // which means clients can subscribe to changes
-    let waitingAccessor = 'waiting';
-    if (typeof model.accessors !== 'object')
-        model.accessors = {};
-    model.accessors.waiting = waitingAccessor;
+    let waitingSelector = state => state.waiting; // 'waiting';
+    if (typeof model.selectors !== 'object')
+        model.selectors = {};
+    model.selectors.waiting = waitingSelector;
 
     //----- ACTIONS
     // add some new actions to the model's public api
@@ -38,10 +38,18 @@ function makeWaitable(model) {
         if (typeof state === 'undefined')
             state = deepAssign({}, originalReducer(), initialState);
 
-        if (action.type === actionCodeWait)
-            return object.copyAndAssign(state, waitingAccessor, true);
-        if (action.type === actionCodeStopWaiting)
-            return object.copyAndAssign(state, waitingAccessor, false);
+        if (action.type === actionCodeWait) {
+            state = object.copy(state);
+            state.waiting = true;
+            return state;
+        }
+        if (action.type === actionCodeStopWaiting) {
+            state = object.copy(state);
+            state.waiting = false;
+            return state;
+        }
+        //if (action.type === actionCodeStopWaiting)
+        //    return object.copyAndAssign(state, waitingSelector, false);
         return originalReducer(state, action);
     };
 }

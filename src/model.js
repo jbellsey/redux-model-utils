@@ -4,8 +4,8 @@ var deepAssign = require('deep-assign'),
     subscribe  = require('./subscribe');
 
 /*
-    adjust the model's accessors to include the model name, and possibly "present" to
-    account for the presence of redux-undo.
+    adjust the model's selectors to include the model name, and possibly "present" to
+    account for the use of the redux-undo library.
 
     our use of combineReducers() (see store.js) causes each model's store to be scoped
     inside an object whose key is the model name.
@@ -14,56 +14,75 @@ var deepAssign = require('deep-assign'),
     outside the model, that store looks like this: {model: {userID}}.
 
     so for consumers wanting to subscribe to changes on the model, they need to have
-    an accessor prefixed with the model name: "model.userID". but inside the model,
+    a selector prefixed with the model name: "model.userID". but inside the model,
     you probably still need the unscoped version for use inside your reducer.
 
-        ORIGINAL:  accessor.location = "location"
-        MODIFIED:  accessor.location = modelName + ".location"
+        ORIGINAL:  selector.location = "location"
+        MODIFIED:  selector.location = modelName + ".location"
 
-    if the model is undoable, the accessors are then scoped to "present":
+    if the model is undoable, the selectors are then scoped to "present":
 
-        UNDOABLE:  accessor.location = modelName + ".present.location";
+        UNDOABLE:  selector.location = modelName + ".present.location";
 
-    NOTE: this actually SEVERS the connection to [model.accessors], and inserts an
+    NOTE: this actually SEVERS the connection to [model.selectors], and inserts an
     entirely new object map.
 */
 
     let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
 
-function mapAccessors(model) {
+function mapSelectors(model) {
 
-    // make a full copy of the accessors
-    let newAccessors    = deepAssign({}, model.accessors),
+    // make a full copy of the selectors
+    let newSelectors    = deepAssign({}, model.selectors),
         isUndoable      = model.options && model.options.undoable,
         presentPrefix   = 'present.',
         pastPrefix      = 'past.',
         futurePrefix    = 'future.',
-        modelNamePrefix = model.name + '.';
+        modelNamePrefix = model.name + '.',
 
-    Object.keys(newAccessors).forEach(accessorKey => {
+        fixOneSelector  = selectorKey => {
 
-        let orig = newAccessors[accessorKey];
+            let orig = newSelectors[selectorKey];
 
-        if (isUndoable) {
-            // undoables must start with modelname, then "present"
-            // we omit "present" if we find "past" or "future", which means
-            // the user is being deliberate about which undo stack they want
-            //
-            if (!(startsWith(orig, presentPrefix) || startsWith(orig, pastPrefix) || startsWith(orig, futurePrefix)))
-                orig = modelNamePrefix + presentPrefix + orig;
-            else if (!startsWith(orig, modelNamePrefix))
-                orig = modelNamePrefix + orig;
-            newAccessors[accessorKey] = orig;
-        }
-        else {
-            // not undoable: accessor must start with the model name
-            if (!startsWith(orig, modelNamePrefix))
-                newAccessors[accessorKey] = modelNamePrefix + orig;
-        }
-    });
+            if (typeof orig === 'string') {
 
-    // look! we're overwriting your accessor map!
-    model.accessors = newAccessors;
+                if (isUndoable) {
+
+                    // undoables must start with modelname, then "present"
+                    // we omit "present" if we find "past" or "future", which means
+                    // the user is being deliberate about which undo stack they want
+                    //
+                    if (!(startsWith(orig, presentPrefix) || startsWith(orig, pastPrefix) || startsWith(orig, futurePrefix)))
+                        orig = modelNamePrefix + presentPrefix + orig;
+                    else if (!startsWith(orig, modelNamePrefix))
+                        orig = modelNamePrefix + orig;
+                    newSelectors[selectorKey] = orig;
+                }
+                else {
+                    // not undoable: selector must start with the model name
+                    if (!startsWith(orig, modelNamePrefix))
+                        newSelectors[selectorKey] = modelNamePrefix + orig;
+                }
+            }
+            else if (typeof orig === 'function') {
+
+                if (isUndoable) {
+                    // for function selectors, we can't tell if the function is looking into
+                    // the past or future zones. we have to assume present. for past/future
+                    // selectors, you must use a string.
+                    //
+                    newSelectors[selectorKey] = (state) => orig(state[model.name].present);
+                }
+                else {
+                    newSelectors[selectorKey] = (state) => orig(state[model.name]);
+                }
+            }
+        };
+
+    Object.keys(newSelectors).forEach(fixOneSelector);
+
+    // look! we're overwriting your selector map!
+    model.selectors = newSelectors;
 }
 
 // modify the public API for each model.
@@ -88,7 +107,7 @@ function modelBuilder(model) {
         //
         //  • actions for  "wait()" and "stopWaiting()". these are public, so they
         //      can be called by the view, or from inside your own async code
-        //  • a boolean in the store. subscribe to changes at model.accessors.waiting
+        //  • a boolean in the store. subscribe to changes at model.selectors.waiting
         //
         if (model.options.waitable)
             waitable.makeWaitable(model);
@@ -100,8 +119,8 @@ function modelBuilder(model) {
     //----------
     // nasty, overwritey, we-know-better-than-you stuff. dragons, and all that.
 
-    // make some changes to the accessors object
-    mapAccessors(model);
+    // make some changes to the selectors object
+    mapSelectors(model);
 
     //----------
     // close it up!

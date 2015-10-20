@@ -6,10 +6,11 @@ var store  = require('./store').getStore,
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
  *
  * Usage:
- *      myModel.subscribe(myModel.accessors.userID, (newUserID) => {log(newUserID)});
+ *      myModel.subscribe(myModel.selectors.userID, (newUserID) => {log(newUserID)});
  *
- * @param accessor {string}
- * A string in dot notation. This is used to find the property of interest in your store (e.g., "user.id")
+ * @param selector {(string|function)}
+ * A string in dot notation, or a selector function with signature (state) => value. This
+ * is used to find the property of interest in your store (e.g., "user.id")
  *
  * @param cb {function}
  * This function will be called only when the observed value changes. Its signature is simple:
@@ -23,10 +24,10 @@ var store  = require('./store').getStore,
  * Passes back the return from store.subscribe() -- i.e., the unsubscribe function
  *
  */
-function subscribe(accessor, cb, opts) {
+function subscribe(selector, cb, opts) {
 
     var previousValue,
-        val     = () => object.lookup(store().getState(), accessor),
+        val     = () => object.lookup(store().getState(), selector),
         handler = () => {
             let currentValue = val();
             if (previousValue !== currentValue) {

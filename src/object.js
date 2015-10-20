@@ -10,9 +10,9 @@ var deepAssign = require('deep-assign');
     for purity.
 */
 
-function _deepPeekAndPoke(obj, accessorString, val) {
+function _deepPeekAndPoke(obj, selectorString, val) {
 
-    let props = accessorString.split('.'),
+    let props = selectorString.split('.'),
         final = props.pop(),
         p;
 
@@ -30,31 +30,42 @@ function _deepPeekAndPoke(obj, accessorString, val) {
     obj[final] = val;   // no return value when used as a setter
 }
 
+function lookup(obj, selector) {
+    if (typeof selector === 'string')
+        return _deepPeekAndPoke(obj, selector);
+    else if (typeof selector === 'function')
+        return selector(obj);
+}
+
 // use this signature when writing.
 // it's destructive though; see below
 //
-function assign(obj, accessorString, val) {
-    _deepPeekAndPoke(obj, accessorString, val);
+function assign(obj, selectorString, val) {
+    _deepPeekAndPoke(obj, selectorString, val);
     return obj;
 }
 
 // non-destructive (pure) version of assign
 //
-function copyAndAssign(obj, accessorString, val) {
+function copyAndAssign(obj, selectorString, val) {
     let result = deepAssign({}, obj);       // makes with a full, deep copy of the source object
-    assign(result, accessorString, val);
+    if (typeof selectorString === 'function')
+        throw new Error('redux-utils: copyAndAssign does not accept a function selector; strings only');
+    assign(result, selectorString, val);
     return result;
 }
 
 module.exports = {
-    copy:           (obj) => deepAssign({}, obj),
 
-    // signature of these three methods is the same. the third
-    // parameter is ignored for [lookup], and required for the others.
+    // alias to deepAssign, but you don't need to pass in an empty object
+    copy:           (...args) => deepAssign({}, ...args),
+
+    // accepts an selector string or function
+    lookup,         // (obj, selector) => value
+
+    // signature of these methods is the same:
+    //      assign(obj, selectorString, newValue)
     //
-    //      assign(obj, accessorString, newValue?)
-    //
-    lookup:         _deepPeekAndPoke,
     copyAndAssign,  // pure, non-destructive
     assign          // destructive
 };

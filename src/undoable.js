@@ -6,30 +6,29 @@ function makeUndoable(model) {
         plugin       = undoOptions.plugin,
         pluginConfig = undoOptions.config,
         undoable     = plugin.default,
-        undoActions  = plugin.ActionCreators,
-        dispatch     = store.getStore().dispatch;
+        undoActions  = plugin.ActionCreators;
 
     // sanity check
     if (typeof undoable !== 'function' || typeof undoActions !== 'object') {
         throw new Error('redux-utils: You must load the "redux-undo" library if you request an undoable');
     }
 
-    //----- ACCESSORS
+    //----- SELECTORS
     // allow clients to look at the size of the undo & redo stacks.
     // note: these will break inside your reducer, which only sees "present"
     //
-    if (typeof model.accessors !== 'object')
-        model.accessors = {};
-    model.accessors.undoLength = 'past.length';
-    model.accessors.redoLength = 'future.length';
+    if (typeof model.selectors !== 'object')
+        model.selectors = {};
+    model.selectors.undoLength = 'past.length';     // these selectors must be strings; see model.js for comments
+    model.selectors.redoLength = 'future.length';
 
     //----- ACTIONS
     // add some new actions to the model's public api
     //
     if (typeof model.actions !== 'object')
         model.actions = {};
-    model.actions.undo = () => dispatch(undoActions.undo());
-    model.actions.redo = () => dispatch(undoActions.redo());
+    model.actions.undo = () => store.getStore().dispatch(undoActions.undo());
+    model.actions.redo = () => store.getStore().dispatch(undoActions.redo());
 
     //----- REDUCER
     // wrap it

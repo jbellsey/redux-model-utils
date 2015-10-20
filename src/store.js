@@ -22,7 +22,7 @@ var store;
             'reddit': reddit.reducer
         }
 
-    see [model.js] as well, where we modify the model's accessors to account
+    see [model.js] as well, where we modify the model's selectors to account
     for how stores are now one level deeper.
 */
 function buildReducerMap(modelArray) {
