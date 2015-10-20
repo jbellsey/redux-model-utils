@@ -127,7 +127,7 @@ var model = {
 
     //--- optional properties
     
-    waitable    // boolean; installs a flag and some actions
+    options     // object; options for model creation
 }
 
 // before exporting your model, run it through this munger. see below.
@@ -148,10 +148,9 @@ reducer) or observed (in your view).
 You should (but do not need to) provide a list of `actions`. These are the publicly 
 available actions for interacting with your model. 
 
-You can optionally pass in some **magic triggers**. At present, there is only one:
-a boolean called `waitable`. If you set it to true, your model will be modified
-to provide two new actions (`wait()` and `stopWaiting()`) and an observable 
-property (`waiting`). Usage is shown in the full example below.
+You can optionally pass in some **magic triggers**. At present, there are two:
+`waitable` and `undoable`. Setting these flags will install some custom actions
+and accessors on your model; details below.
 
 # About accessors
 
@@ -278,7 +277,7 @@ const // prepare an empty store. you're doing this already.
       },
       // this list of actions (only one in this case) is exported and public. there are
       // two additional public actions (wait and stopWaiting) that are installed because
-      // we set the "waitable" property on the export statement below.
+      // we set the "waitable" option on the export statement below.
       actions = {
           // querying the device location is async. the action itself takes no parameters.
           getLocation: reduxUtils.makeAsyncAction(() => {
@@ -328,7 +327,9 @@ module.exports = reduxUtils.modelBuilder({
 
     // this causes two new actions to be installed (wait and stopWaiting), and a new
     // property on the model called "waiting"
-    waitable: true,
+    options: {
+        waitable: true
+    }
 
     // export the core attributes of the model
     reducer,
@@ -360,6 +361,91 @@ geo.subscribe(geo.accessors.waiting, waiting => {
     console.log('waiting for location data:', !!waiting);
 });
 
+```
+
+# Magic triggers
+
+Triggers are set by listing them on the `options` property of your model.
+
+### Waitiable
+
+A `waitable` model will be modified to provide two new actions 
+(`wait()` and `stopWaiting()`) and an observable property (`waiting`).
+Calling these actions doesn't actually do anything other than
+modify the value of `waiting`. 
+
+The purpose of this feature is to make it easy to build a spinner
+for your async operations.
+
+The actions do not nest; the `waiting` property is currently a boolean,
+not a stack size.
+
+To request this functionality on your model, add it to an `options` object:
+
+```javascript
+module.exports = reduxUtils.modelBuilder({
+
+    name: 'geo',
+    options: {
+        waitable: true  // <= that's it
+    }
+    reducer,
+    actions,
+    accessors
+});
+```
+
+See the full example above for a waitable in action, complete with
+actions and a subscriber.
+ 
+### Undoable
+
+There is also a magic trigger to convert a model into an undoable.
+This operates similarly to a waitable, in that this trigger installs
+some new actions and new observables.
+
+Note that the actual undo functionality is provided by the
+[redux-undo](https://github.com/omnidan/redux-undo) library. You must
+install this library yourself if you request undoable models.
+
+An undoable model will provide two new actions (`undo()`
+and `redo()`) and two observable properties (`undoLength` and `redoLength`,
+which track the size of the corresponding stacks).
+
+To install this functionality in your model, you must pass in a reference
+to the `redux-undo` plugin, and an optional configuration object. The
+configuration object is passed through to the plugin.
+
+When you request undoable functionality, your accessor strings will also be modified
+in place. This is because `redux-undo` modifies the structure of your store.
+Any code outside your reducer needs to look one level deeper to access
+the current state of the model. So if you have an accessor string for `todos`, 
+it will be converted to `present.todos` for you.
+
+The following example shows how to set up your model. The use of the 
+actions and observables is left as an exercise for the reader. 
+
+```javascript
+// load the plugin. you might use 'import', if you're into that kind of thing
+let reduxUndo = require('redux-undo');
+
+module.exports = reduxUtils.modelBuilder({
+    name: 'todos',
+    options: {
+        undoable: {
+            // pass in the entire plugin
+            plugin: reduxUndo,
+            
+            // this config object is passed to the plugin
+            config: {
+                filter: distinct()
+            }
+        }
+    },
+    reducer: reducer,
+    actions,
+    accessors
+});
 ```
 
 # API
