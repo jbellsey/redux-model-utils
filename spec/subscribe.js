@@ -13,13 +13,13 @@ describe('SUBSCRIBE module:', () => {
             },
             state;
 
-        beforeEach(() => state = RU.copy(initial));
+        beforeEach(() => state = RU.clone(initial));
 
-        function reducer(state = initialState, action = {}) {
+        function reducer(state = initial, action = {}) {
 
             switch (action.type) {
                 case 'setColor':
-                    return RU.copyAndAssign(state, 'prefs.color', action.col);
+                    return RU.cloneAndAssign(state, 'prefs.color', action.col);
 
                 default:
                     return state;
@@ -98,6 +98,18 @@ describe('SUBSCRIBE module:', () => {
         RU.subscribe('prefs.color', () => ++invocationCount, {noInit:1});
         setColor('purple');
         expect(invocationCount).toBe(1);    // !
+    });
+
+    it('receives the correct value', () => {
+
+        var expected  = [{ type:'setColor', col:'mint' }],
+            mockStore = store.resetStore(reducer, state, expected, () => {
+                var state = mockStore.getState();
+                expect(state.prefs.color).toBe('mint');
+            });
+
+        RU.subscribe('prefs.color', newColor => expect(newColor).toBe('mint'), {noInit:1});
+        setColor('mint');
     });
 
 

@@ -7,7 +7,7 @@ var clone      = require('clone'),
     WRITE ("poke"): _deepPeekAndPoke(obj, "dot.notation.string", newValue)
 
     note: the WRITE signature is NOT PURE. it modifies {obj} in place.
-    you should use the ASSIGN alias for writing, or even better, copyAndAssign
+    you should use the ASSIGN tool for writing, or even better, cloneAndAssign
     for purity.
 */
 
@@ -48,28 +48,28 @@ function assign(obj, selectorString, val) {
 
 // non-destructive (pure) version of assign
 //
-function copyAndAssign(obj, selectorString, val) {
+function cloneAndAssign(obj, selectorString, val) {
     let result = clone(obj);       // makes with a full, deep copy of the source object
     if (typeof selectorString === 'function')
-        throw new Error('redux-utils: copyAndAssign does not accept a function selector; strings only');
+        throw new Error('redux-utils: cloneAndAssign does not accept a function selector; strings only');
     assign(result, selectorString, val);
     return result;
 }
 
 module.exports = {
 
-    // alias to clone: one input object only
-    copy:           clone,
+    // one input object only
+    clone,
 
     // first input is for duping; other inputs get assigned
-    copyAndMerge:   (source, ...merges) => deepAssign(clone(source), ...merges),
+    cloneAndMerge:   (source, ...merges) => deepAssign(clone(source), ...merges),
 
     // accepts an selector string or function
     lookup,         // (obj, selector) => value
 
-    // signature of these methods is the same:
+    // signature of these two methods is the same:
     //      assign(obj, selectorString, newValue)
     //
-    copyAndAssign,  // pure, non-destructive
-    assign          // destructive. DRAGONS!
+    cloneAndAssign,  // pure, non-destructive
+    assign           // destructive. DRAGONS!
 };

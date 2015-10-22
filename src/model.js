@@ -1,4 +1,4 @@
-var deepAssign = require('deep-assign'),
+var object     = require('./object'),
     waitable   = require('./waitable'),
     undoable   = require('./undoable'),
     subscribe  = require('./subscribe');
@@ -33,7 +33,7 @@ var deepAssign = require('deep-assign'),
 function mapSelectors(model) {
 
     // make a full copy of the selectors
-    let newSelectors    = deepAssign({}, model.selectors),
+    let newSelectors    = object.clone(model.selectors),
         isUndoable      = model.options && model.options.undoable,
         presentPrefix   = 'present.',
         pastPrefix      = 'past.',

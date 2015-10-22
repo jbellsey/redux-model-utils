@@ -17,7 +17,7 @@ function makeWaitable(model) {
     //----- SELECTORS
     // the waitable flag is merged into the model's store. it's public,
     // which means clients can subscribe to changes
-    let waitingSelector = state => state.waiting; // 'waiting';
+    let waitingSelector = state => state.waiting;
     if (typeof model.selectors !== 'object')
         model.selectors = {};
     model.selectors.waiting = waitingSelector;
@@ -39,17 +39,15 @@ function makeWaitable(model) {
             state = deepAssign({}, originalReducer(), initialState);
 
         if (action.type === actionCodeWait) {
-            state = object.copy(state);
+            state = object.clone(state);
             state.waiting = true;
             return state;
         }
         if (action.type === actionCodeStopWaiting) {
-            state = object.copy(state);
+            state = object.clone(state);
             state.waiting = false;
             return state;
         }
-        //if (action.type === actionCodeStopWaiting)
-        //    return object.copyAndAssign(state, waitingSelector, false);
         return originalReducer(state, action);
     };
 }

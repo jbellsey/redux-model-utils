@@ -24,7 +24,8 @@ let unsubscribe = store.subscribe(handleChange);
 ```
 
 Here's our way. Your callback is only invoked when the value has changed, so you can
-usually omit the second parameter.
+usually omit the second parameter. Notice that the view only speaks to the model,
+not the store.
 
 ```javascript
 let unsubscribe = users.subscribe(users.selectors.userList, (users, previousUserList) => {
@@ -66,7 +67,7 @@ Adding a spinner to your async operations just got trivial. In one
 line of code, you can add two actions to your model (`wait()` and 
 `stopWaiting()`) and a boolean flag to the store (`waiting`).
 
-Similarly, adding undo to your model with the [redux-undo](https://github.com/omnidan/redux-undo)
+Similarly, adding undo to your model with [redux-undo](https://github.com/omnidan/redux-undo)
 is super-easy. With one line of code, you get `undo()` and `redo()`
 actions, as well as observables for tracking the size of the undo stack.
 
@@ -75,15 +76,15 @@ explanation, so we'll defer for a bit.
  
 ### Common object-management utilities
 
-In addition to `copy()`, which does a deep copy of an object, there are several other
-utilities for working with objects, including `lookup()`, `assign()` and `copyAndAssign()`.
+In addition to `clone()`, which does a deep copy of an object, there are several other
+utilities for working with objects, including `lookup()`, `assign()` and `cloneAndAssign()`.
 These are described below.
 
 # Setup
 
 ### Internal dependencies
 
-This library uses `deep-assign`, and of course `redux`. It doesn't use any other external code.
+This library uses `node-clone`, `deep-assign`, and of course `redux`. 
 
 
 ### Installation & project setup
@@ -105,19 +106,15 @@ In addition, you must make the following changes or additions to your code:
 
 # Context
 
-Just a quick note: I'm not currently using this with React, because I'm a dinosaur,
-or because I haven't had the need to use React yet. Therefore this library neither
-depends on React nor expects you to be using it. You should be able to make good use
-of the tools and patterns regardless how you manage your views.
+This library is React-free. You can use it with jQuery apps if that's your thing.
+(Not that there's anything wrong with that.)
 
-And the sample code all uses CommonJS module management, because I'm still using
-browserify for most of my projects. It will work fine with JSPM and SystemJS.
-
-I've even used this with a jQuery app. Dinosaur.
+In fact, its opinions may not match your needs if you're using React. If so,
+I'd like to hear from you so we can make this library even more useful.
 
 # Model structure
 
-Part of the power of this library is not just in the methods it provides, but in
+Part of the power of this library is not just in the functions it provides, but in
 the structure it imposes on your models.
 
 ```javascript
@@ -147,13 +144,14 @@ You must have a `reducer` property, which points to your reducer function.
 There is nothing special about its signature; just build a normal reducer. See the
 full example below.
 
-You must provide a list of `selectors`. These are strings or functions, described in the next
+You must provide a list of `selectors`. These are strings or functions that are used
+to select specific properties in your model's store, and are described in the next
 section. One selector is needed for each observable property. You may also choose
 to define selectors for properties that are not externally observable, but are only 
 needed inside the reducer. That's up to you.
 
 You should (but do not need to) provide a list of `actions`. These are the publicly 
-available actions for interacting with your model. 
+available action creators for interacting with your model. 
 
 You can optionally pass in some **magic triggers**. At present, there are two:
 `waitable` and `undoable`. Setting these flags will install some custom actions
@@ -202,15 +200,17 @@ Functions are hip. They compose. They're fun to write.
 Strings are old-skool. They seem more brittle. They don't tell your IDE anything about semantic content.
 
 The main purpose for writing selectors in the first place is to hide your implementation
-from consumers (i.e., views). Views will
-typically need to know nothing about your internal data structures.
+from consumers (i.e., views). Views will typically need to know nothing about your internal data structures.
  
-A view uses your selectors in the `subscribe()` function, which accepts strings and functions. So from the
+A view uses your selectors in the `subscribe()` function, which accepts either strings or functions. So from the
 perspective of writing your consuming code, there's literally no difference. 
 
 Inside your model code, however, you may find strings handy. If you're not composing selectors (and
 you're probably not), we have some convenient utility methods for setting a model property, but only
 if you use string selectors.
+
+Or, to put it another way: a selector _string_ can be used for both reading and writing state.
+A selector _function_ can only be used for reading.
 
 ### Selector strings
 
@@ -224,19 +224,19 @@ function reducer(state = initialState, action = {}) {
     
         case actionCodes.SET_LOCATION:
             // so nice. even the reducer doesn't expressly know about the model structure
-            return reduxUtils.copyAndAssign(state, locationSelectorString, action.location);
+            return reduxUtils.cloneAndAssign(state, locationSelectorString, action.location);
     }
     return state;
 }
 ```
-In one line of code, you duplicate the state, and change one deeply-nested property. But this
+In one line of code, you duplicate the state and change one deeply-nested property. But this
 only works with a string selector. To do the same with a function selector, well, you can't.
 You have to do it manually. 
 
 ### Selector functions
 
 A selector function may be beneficial in many ways. But one way it falls short is that it's
-unusable inside your reducer.
+unusable inside your reducer. 
 
 ```javascript
 // a function selector is not usable inside the reducer
@@ -247,8 +247,8 @@ function reducer(state = initialState, action = {}) {
     switch (action.type) {
     
         case actionCodes.SET_LOCATION:
-            // so verbose. and less dry.
-            return reduxUtils.copy(state, {     // alias to deep-assign({}, state)
+            // more verbose. and less dry.
+            return reduxUtils.cloneAndMerge(state, {
                 preferences: {
                     location: action.location;
                 }
@@ -257,12 +257,15 @@ function reducer(state = initialState, action = {}) {
     return state;
 }
 ```
-Here we've used our `copy()` function to duplicate the state. This uses
- [deep-assign](https://github.com/sindresorhus/deep-assign), which is a smarter
+Here we've used our `cloneAndMerge()` function to duplicate the state and merge
+in the new location value. 
+
+The merge operation uses
+[deep-assign](https://github.com/sindresorhus/deep-assign), which is a smarter
 version of `Object.assign()`. The latter (and all polyfills) will clobber the entire 
 `preferences` object, so if you had other keys, they would be lost when the user only wanted
 to set the location. The `deep-assign` library solves that problem, which is why
-it's provided as a helper in this library.
+it's used as a helper in this library.
 
 But you still have the verbosity problem. If you prefer the longer version, go for it. 
 
@@ -272,7 +275,8 @@ Here is a map of actions. It is not strictly required by any of the library code
 it is quite useful. This is a typical way to construct the map inside your model:
 
 ```javascript
-// putting codes into an object is not mandatory, but it's handy for staying dry
+// putting codes into an object is not mandatory. it's handy for staying dry, since
+// the codes are used for creating actions and for responding to them.
 let actionCodes = {
     CTR_INCR: 'CTR_INCR',
     CTR_DECR: 'CTR_DECR'
@@ -314,7 +318,7 @@ const // prepare an empty store. you're doing this already.
       selectors = {
           location: 'location'
       },
-      // these action codes are not exported; they are private to the model
+      // action codes are not exported; they are private to the model
       actionCodes = {
           SET_LOCATION: 'SET_LOCATION'
       },
@@ -326,12 +330,16 @@ const // prepare an empty store. you're doing this already.
       // two additional public actions (wait and stopWaiting) that are installed because
       // we set the "waitable" option on the export statement below.
       actions = {
-          // querying the device location is async. the action itself takes no parameters.
+          // querying the device location is async. we have a tool for that.
+          // also, the action itself takes no parameters.
           getLocation: reduxUtils.makeAsyncAction(() => {
 
               // create some callbacks for the geolocation API
               let err = () => {
                       privateActions.setLocation({});
+                      
+                      // this (synchronous) action is magically installed because 
+                      // we flagged the model as "waitable"
                       actions.stopWaiting();
                   },
                   success = position => {
@@ -358,11 +366,11 @@ function reducer(state = initialState, action = {}) {
 
     switch (action.type) {
         case actionCodes.SET_LOCATION:
-            // use the provided function "copyAndAssign" to keep the reducer pure.
+            // use the provided function "cloneAndAssign" to keep the reducer pure.
             // note the use of "selectors.location", which tells the copier what property
             // to overwrite. in other words, here is the impure version of what we're doing:
             //      state.location = action.location
-            return reduxUtils.copyAndAssign(state, selectors.location, action.location);
+            return reduxUtils.cloneAndAssign(state, selectors.location, action.location);
     }
     return state;
 }
@@ -416,13 +424,17 @@ Triggers are set by listing them on the `options` property of your model.
 
 ### Waitiable
 
-A `waitable` model will be modified to provide two new actions 
-(`wait()` and `stopWaiting()`) and an observable property (`waiting`).
-Calling these actions doesn't actually do anything other than
-modify the value of `waiting`. 
-
 The purpose of this feature is to make it easy to build a spinner
 for your async operations.
+
+A "waitable" model will be modified to provide two new actions 
+(`wait()` and `stopWaiting()`) and an observable property (`waiting`).
+You will also get a selector (`model.selector.waiting`) to assist
+in subscribing to changes.
+
+Calling the new actions doesn't actually do anything other than
+modify the value of `waiting`. You have to manage the spinner yourself
+in the view.
 
 The actions do not nest; the `waiting` property is currently a boolean,
 not a stack size.
@@ -456,22 +468,32 @@ Note that the actual undo functionality is provided by the
 install this library yourself if you request undoable models.
 
 Setting the undoable trigger will provide your model with two new actions (`undo()`
-and `redo()`) and two observable properties (`undoLength` and `redoLength`,
-which track the size of the corresponding stacks).
+and `redo()`) and two observable properties (`undoLength` and `redoLength`),
+which track the size of the corresponding stacks). Corresponding selectors are
+also created.
 
 To install this functionality in your model, you must pass in a reference
 to the `redux-undo` plugin. You can also (optionally) pass a configuration 
 object, which is passed through to the plugin.
 
-When you request undoable functionality, your list of selectors will also be modified
-in place. This is because `redux-undo` modifies the structure of your store.
+When you request undoable functionality, your list of selectors will be modified.
+This is because `redux-undo` modifies the structure of your store; the current 
+state of your model is now embedded inside a `present:{}` object. 
 Any code outside your reducer needs to look one level deeper to access
-the current state of the model. So if you have a selector string for `todos`, 
-it will be converted to `present.todos` for you. (Or, if you're using a selector
+the current state of the model. 
+
+So if you have a selector string for `todos`, it will be converted to 
+`present.todos` for you. (Or, if you're using a selector
 function, it will be composed with `state => state.present`.) This is all handled
 for you behind the scenes.
 
-The following example shows how to set up your model. The use of the 
+Inside your reducer, the `state` object you are given to work with is already
+scoped inside the `present` object, so your selectors do not need to dereference it.
+The easiest way to manage this duality is to keep a reference to your original
+`selectors` object, and use that inside your reducer. Views will see the dereferenced
+selectors, and your reducer will see the originals.
+
+The following example shows how to set up your model. The use of the undoable
 actions and observables is left as an exercise for the reader. 
 
 ```javascript
@@ -526,7 +548,9 @@ module.exports = reduxUtils.modelBuilder({
 ##### makeActionCreator(type, ...argNames)
 
 You're probably already doing this. See [the docs](http://rackt.org/redux/docs/basics/Actions.html).
-This version is not any different.
+This version is not any different. Note that actions invoked this way are dispatched for you.
+If you need a different way to dispatch, or if you need action objects without a built-in
+dispatch, just don't use this tool.
 
 ```javascript
 let actions = {
@@ -547,6 +571,7 @@ Here's a common pattern for running an AJAX query:
 
 ```javascript
 // these private actions are used inside async actions. they are not exposed.
+// also, this example doesn't include the reducer code for them.
 //
 let privateActions = {
     
@@ -568,7 +593,7 @@ let actions = {
         privateActions.startQuery();
 
         // start the async operation
-        fetch(`http://myapi.com/u/${username}`)
+        fetch(`http://myapi.com/u/${argObj.username}`)
               .then(response => {
               
                   // query is done. run another synchronous action to store the data.
@@ -606,12 +631,12 @@ The result is the same: an object map of keys and strings. The benefit of using 
 utility is usually minimal, but may be useful when building longer lists. The 
 downside is that your IDE may provide less assistance with autocompletion.
 
-##### copy(obj)
+##### clone(obj)
 
 Makes a full deep clone of the object. Uses the excellent [clone](https://github.com/pvorb/node-clone)
 library. 
 
-##### copyAndMerge(sourceObject, ...mergeOjects)
+##### cloneAndMerge(sourceObject, ...mergeOjects)
 
 First, makes a full copy of `sourceObject`. It then uses `deep-assign` to 
 overwrite (or merge) properties from the provided `mergeObjects`. This is
@@ -629,7 +654,7 @@ let store = {
 // create a full copy of store, overwriting a single property.
 // this is your most basic and useful pattern for reducers
 //
-let newStore = copyAndMerge(store, {
+let newStore = cloneAndMerge(store, {
     preferences: {
         colorScheme: 'light'   // does not overwrite any other properties        
     }
@@ -637,9 +662,13 @@ let newStore = copyAndMerge(store, {
 // => {userID: 0, preferences: {colorScheme: 'light', fontSize: 'large'}}
 ```
 
-##### copyAndAssign(obj, selectorString, newValue)
+##### cloneAndAssign(obj, selectorString, newValue)
 
-This function makes a full copy of `obj`. It then uses the selector string (in dot
+This is a special-purpose version of `cloneAndMerge`. It does
+a single property replacement inside a deep object. (Sounds like something
+you might do in a reducer, perhaps?)
+
+This function first makes a full clone of `obj`. It then uses the selector string (in dot
 notation, as described above; functions not allowed!) to push `newValue` into the 
 appropriate place in the new object.
 
@@ -652,11 +681,11 @@ let store = {
     }
 };
 
-let newStore = reduxUtils.copyAndAssign(store, 'preferences.fontSize', 'small')
+let newStore = reduxUtils.cloneAndAssign(store, 'preferences.fontSize', 'small')
 // => {userID: 0, preferences: {colorScheme: 'dark', fontSize: 'small'}}
 ```
 
-You will probably use these two functions (`copyAndAssign`, `copyAndMerge`)
+You will probably use these two functions (`cloneAndAssign` and `cloneAndMerge`)
 in your reducer for almost every action. Here is a more complete example that has a string 
 and an array of objects in the store:
 
@@ -685,22 +714,22 @@ function reducer(state = initialState, action = {}) {
 
     switch (action.type) {
 
-        // for arrays, we use 'copy()' on the state object to duplicate it first. this
-        // also duplicates the array. selectors (strings or functions) aren't
-        // useful here; we have to directly manipulate the state object.
+        // for arrays, we use 'clone()' on the state object to duplicate it first. 
+        // this also duplicates the internal array. selectors (strings or functions)
+        // aren't useful here; we have to directly manipulate the state object.
         //
         case actionCodes.ADD_TODO:
-            state = reduxUtils.copy(state);
+            state = reduxUtils.clone(state);
             state.todos.push({
                 text: action.text,
                 completed: false
             });
             return state;
 
-        // for string properties, we use 'copyAndAssign()' with a selector string.
+        // for scalar properties, we use 'cloneAndAssign()' with a selector string.
         // we like one-liners.
         case actionCodes.SET_LIST_NAME:
-            return reduxUtils.copyAndAssign(state, selectors.listName, action.text);
+            return reduxUtils.cloneAndAssign(state, selectors.listName, action.text);
     }
     return state;
 }
@@ -715,8 +744,8 @@ module.exports = reduxUtils.modelBuilder({
 
 ##### assign(obj, selectorString, newValue)
 
-This function performs the same operation as `copyAndAssign()`, except ... _wait for it_ ...
-without copying the object first. It is destructive, impure, and all sorts of other 
+This function performs the same operation as `cloneAndAssign()`, except ... _wait for it_ ...
+without cloning the object first. It is destructive, impure, and all sorts of other 
 mean, nasty things. Use with caution.
 
 This function accepts selectors in string form only.
@@ -724,10 +753,10 @@ This function accepts selectors in string form only.
 ##### lookup(obj, selector)
 
 Provides a read operation inside your object, using the provided selector.
-This complements the write operation provided by `assign()` and `copyAndAssign()`.
+This complements the write operation provided by `assign()` and `cloneAndAssign()`.
 You probably won't need to use this.
 
-The selector can be a string or a lookup function.
+Because this is a read operation, the selector can be either a string or a lookup function.
 
 ### Setup tools
 
@@ -782,8 +811,7 @@ You must call this immediately after creating your store. That is all.
 
 ##### getStore()
 
-You shouldn't need to use this, but it's available.
-
+You probably won't need to use this, but it's available.
 
 ### View-related tools
 

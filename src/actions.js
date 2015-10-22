@@ -40,7 +40,8 @@ function makeAction(type, valueNames, values) {
 }
 
 // builds a partially-applied function for creating actions dynamically.
-// this is the most common way to build actions.
+// this is the most common way to build and dispatch actions.
+//
 // example:
 //      let add = makeActionCreator('adder', 'number');
 //      add(4);
@@ -64,8 +65,8 @@ function makeAsyncAction(cb, ...argNames) {
 
     return (...args) => {
 
-        // make a placeholder action, just to collect the given args. its type will be null,
-        // but its other keys will match the requested arguments, just as with normal action creators.
+        // make a placeholder action object, just to collect the given args. its type will be null,
+        // but its other keys will match the requested argument names, just as with normal action creators.
         //
         let argObject = makeAction(null, argNames, args),
 

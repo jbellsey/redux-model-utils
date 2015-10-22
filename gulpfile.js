@@ -43,7 +43,9 @@ gulp.task('spec', ['browserify-tests'], () => {
 
     var jasmine = require('gulp-jasmine'),
         testFiles = './dist/spec.js',
-        opts = {};
+        opts = {
+            //verbose: true
+        };
 
     return gulp.src(testFiles)
         .pipe(jasmine(opts));

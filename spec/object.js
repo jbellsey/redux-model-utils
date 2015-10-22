@@ -19,16 +19,16 @@ describe('OBJECT module:', () => {
 
         //var original = {a:1, b:{c:2, d:3}},
         var original = {a:1, b:2},
-            dupe     = RU.copy(original);
+            dupe     = RU.clone(original);
 
         original.b = 999;
         expect(dupe.b).toBe(2);
     });
 
-    it('copyAndMerge: merges multiple objects', () => {
+    it('cloneAndMerge: merges multiple objects', () => {
         var part1   = {a:1, b:{c:2, d:3}},
             part2   = {b:{c:4}, q: 99},
-            merged  = RU.copyAndMerge(part1, part2);
+            merged  = RU.cloneAndMerge(part1, part2);
 
         expect(merged.b.d).toBe(3);
         expect(merged.b.c).toBe(4);
@@ -52,14 +52,14 @@ describe('OBJECT module:', () => {
 
     //-----------
 
-    it('duplicates & tweaks objects with copyAndAssign', () => {
+    it('duplicates & tweaks objects with cloneAndAssign', () => {
 
-        var newStore = RU.copyAndAssign(store, 'prefs.size', 'small');
+        var newStore = RU.cloneAndAssign(store, 'prefs.size', 'small');
         expect(newStore.prefs.size).toBe('small');
         expect(store.prefs.size).toBe('large');
     });
 
-    it('rejects function selectors for copyAndAssign', () => {
+    it('rejects function selectors for cloneAndAssign', () => {
 
         var selector = state => state.prefs.color,
             newStore,
@@ -67,7 +67,7 @@ describe('OBJECT module:', () => {
 
         try {
             // this throws an error
-            newStore = RU.copyAndAssign(store, selector, 'blue');
+            newStore = RU.cloneAndAssign(store, selector, 'blue');
             result = true;
         }
         catch(e) {}
