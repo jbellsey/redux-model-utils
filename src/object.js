@@ -1,4 +1,5 @@
-var deepAssign = require('deep-assign');
+var clone      = require('clone'),
+    deepAssign = require('deep-assign');
 
 /*
     two ways to use:
@@ -48,7 +49,7 @@ function assign(obj, selectorString, val) {
 // non-destructive (pure) version of assign
 //
 function copyAndAssign(obj, selectorString, val) {
-    let result = deepAssign({}, obj);       // makes with a full, deep copy of the source object
+    let result = clone(obj);       // makes with a full, deep copy of the source object
     if (typeof selectorString === 'function')
         throw new Error('redux-utils: copyAndAssign does not accept a function selector; strings only');
     assign(result, selectorString, val);
@@ -57,8 +58,11 @@ function copyAndAssign(obj, selectorString, val) {
 
 module.exports = {
 
-    // alias to deepAssign, but you don't need to pass in an empty object
-    copy:           (...args) => deepAssign({}, ...args),
+    // alias to clone: one input object only
+    copy:           clone,
+
+    // first input is for duping; other inputs get assigned
+    copyAndMerge:   (source, ...merges) => deepAssign(clone(source), ...merges),
 
     // accepts an selector string or function
     lookup,         // (obj, selector) => value
@@ -67,5 +71,5 @@ module.exports = {
     //      assign(obj, selectorString, newValue)
     //
     copyAndAssign,  // pure, non-destructive
-    assign          // destructive
+    assign          // destructive. DRAGONS!
 };

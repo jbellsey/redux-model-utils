@@ -39,7 +39,7 @@ function subscribe(selector, cb, opts) {
     // normally, we invoke the callback on startup, so that it gets
     // an initial value. you can suppress this with opts.noInit
     //
-    if (!opts || !!opts.noInit)
+    if (!(opts && opts.noInit))
         cb(previousValue = val());
 
     // return the unsubscribe function to the caller

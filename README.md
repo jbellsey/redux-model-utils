@@ -606,11 +606,36 @@ The result is the same: an object map of keys and strings. The benefit of using 
 utility is usually minimal, but may be useful when building longer lists. The 
 downside is that your IDE may provide less assistance with autocompletion.
 
-##### copy(...objects)
+##### copy(obj)
 
-This is an alias to `deepAssign({}, ...objects)`. If you pass a single object,
-you will receive a deep copy. Additional parameters provide objects which overwrite
-properties in the copy. See `deep-assign` for details.
+Makes a full deep clone of the object. Uses the excellent [clone](https://github.com/pvorb/node-clone)
+library. 
+
+##### copyAndMerge(sourceObject, ...mergeOjects)
+
+First, makes a full copy of `sourceObject`. It then uses `deep-assign` to 
+overwrite (or merge) properties from the provided `mergeObjects`. This is
+typically a more robust operation than using `Object.assign()`, as discussed above.
+
+```javascript
+let store = {
+    userID: 0,
+    preferences: {
+        colorScheme: 'dark',
+        fontSize: 'large'
+    }
+};
+
+// create a full copy of store, overwriting a single property.
+// this is your most basic and useful pattern for reducers
+//
+let newStore = copyAndMerge(store, {
+    preferences: {
+        colorScheme: 'light'   // does not overwrite any other properties        
+    }
+});
+// => {userID: 0, preferences: {colorScheme: 'light', fontSize: 'large'}}
+```
 
 ##### copyAndAssign(obj, selectorString, newValue)
 
@@ -631,8 +656,8 @@ let newStore = reduxUtils.copyAndAssign(store, 'preferences.fontSize', 'small')
 // => {userID: 0, preferences: {colorScheme: 'dark', fontSize: 'small'}}
 ```
 
-This function will probably be used in your reducer for every action that uses
-a property that isn't an array. Here is a more complete example that has a string 
+You will probably use these two functions (`copyAndAssign`, `copyAndMerge`)
+in your reducer for almost every action. Here is a more complete example that has a string 
 and an array of objects in the store:
 
 ```javascript
@@ -660,15 +685,16 @@ function reducer(state = initialState, action = {}) {
 
     switch (action.type) {
 
-        // for arrays, we use 'copy()' on the state object to duplicate it first, then we
-        // duplicate the array with `[...todos]`. selectors (strings or functions) aren't
+        // for arrays, we use 'copy()' on the state object to duplicate it first. this
+        // also duplicates the array. selectors (strings or functions) aren't
         // useful here; we have to directly manipulate the state object.
+        //
         case actionCodes.ADD_TODO:
             state = reduxUtils.copy(state);
-            state.todos = [...todos, {
+            state.todos.push({
                 text: action.text,
                 completed: false
-            }];
+            });
             return state;
 
         // for string properties, we use 'copyAndAssign()' with a selector string.
