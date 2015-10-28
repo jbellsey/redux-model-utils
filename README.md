@@ -35,8 +35,9 @@ let unsubscribe = users.subscribe(users.selectors.userList, (users, previousUser
 
 ### Handy action-creation
 
-The `makeActionCreator()` code is standard-issue; we're all using it. But it's included
-here as well:
+The `makeActionCreator()` code is standard-issue; we're all using it.
+Note that this will bundle a call to `store.dipsatch()`, which is why the
+use of this function is optional.
 
 ```
 let addTodo = reduxUtils.makeActionCreator('ADD_TODO', 'text');
@@ -106,11 +107,10 @@ In addition, you must make the following changes or additions to your code:
 
 # Context
 
-This library is React-free. You can use it with jQuery apps if that's your thing.
+This library is not tied to React. You can use it with jQuery apps if that's your thing.
 (Not that there's anything wrong with that.)
 
-In fact, its opinions may not match your needs if you're using React. If so,
-I'd like to hear from you so we can make this library even more useful.
+However, you can easily use it in a React app. Details below.
 
 # Model structure
 
@@ -277,11 +277,14 @@ it is quite useful. This is a typical way to construct the map inside your model
 ```javascript
 // putting codes into an object is not mandatory. it's handy for staying dry, since
 // the codes are used for creating actions and for responding to them.
+//
 let actionCodes = {
     CTR_INCR: 'CTR_INCR',
     CTR_DECR: 'CTR_DECR'
 };
+
 // the action creators are Standard Issue. we just wrap them into a mapping object
+//
 let actions = {
     incr: reduxUtils.makeActionCreator(actionCodes.CTR_INCR, 'value'),
     decr: reduxUtils.makeActionCreator(actionCodes.CTR_DECR, 'value')
@@ -289,7 +292,25 @@ let actions = {
 ```
 
 When you export the `actions` object, your view code can invoke actions easily
-by calling `model.actions.incr(4)`, for example.
+by calling your code like this: `model.actions.incr(4)`. 
+
+Of course, if you prefer your actions to be objects, or functions without
+an automatic dispatch, you can create them that way as well. This library 
+adds shorthand for many common patterns, but doesn't prevent you from using
+your own.
+
+```javascript
+// you can do this too; it's standard redux.
+//
+let actions = {
+    incr: (value) => { type: actionCodes.CTR_INCR, value },  
+    decr: (value) => { type: actionCodes.CTR_DECR, value }  
+}
+
+// ... then, in your view, you need to import redux, so you can use dispatch:
+//
+dispatch(model.actions.incr(4))
+```
 
 # OMG JUST SHOW ME
 
@@ -434,7 +455,8 @@ in subscribing to changes.
 
 Calling the new actions doesn't actually do anything other than
 modify the value of `waiting`. You have to manage the spinner yourself
-in the view.
+in the view. Keep in mind that these new actions have a built-in call
+to `dispatch()`.
 
 The actions do not nest; the `waiting` property is currently a boolean,
 not a stack size.
@@ -461,18 +483,21 @@ actions and a subscriber.
 
 There is also a magic trigger to convert a model into an undoable.
 This operates similarly to a waitable, in that this trigger installs
-some new actions and new observables.
+some new actions and new observables. 
 
 Note that the actual undo functionality is provided by the
 [redux-undo](https://github.com/omnidan/redux-undo) library. You must
-install this library yourself if you request undoable models.
+install this library yourself if you request undoable models. Also,
+this "magic undo" feature is optional. You can instead install and 
+configure `redux-undo` in any way you like.
 
 Setting the undoable trigger will provide your model with two new actions (`undo()`
-and `redo()`) and two observable properties (`undoLength` and `redoLength`),
-which track the size of the corresponding stacks). Corresponding selectors are
-also created.
+and `redo()`), each of which has a built-in call to `dispatch()`.
+You also get two observable properties `undoLength` and `redoLength`,
+which track the size of the corresponding stacks. Selectors of the same names are
+also created and installed into your model's `selectors` object.
 
-To install this functionality in your model, you must pass in a reference
+To use this functionality in your model, you must pass in a reference
 to the `redux-undo` plugin. You can also (optionally) pass a configuration 
 object, which is passed through to the plugin.
 
@@ -513,11 +538,84 @@ module.exports = reduxUtils.modelBuilder({
             }
         }
     },
-    reducer: reducer,
+    reducer,
     actions,
     selectors
 });
 ```
+
+# Usage with React
+
+This library was designed to make redux more usable in all your apps, whether or
+not they use React. If you do use React, here's what you need to do.
+
+First, you must import and set up the [react-redux](https://github.com/rackt/react-redux/)
+library. Then, in your model:
+
+```javascript
+module.exports = reduxUtils.modelBuilder({
+    name: 'todos',
+    options: {
+        react: {}   // <= yes, an empty object
+    },
+    reducer,
+    actions,
+    selectors
+});
+```
+
+The empty object on `options.react` is a trigger to install the functionality described
+next. It's an object rather than a boolean to allow for expansion in the future.
+
+When you request React features in your model, you will get a new selector map
+called `reactSelectors`. You pass this map to the `connect()` function provided
+by `react-redux`.
+
+Note that in order to use this feature, your selectors must be functions rather than
+strings.
+
+Here's a fuller example:
+
+```javascript
+// YOUR MODEL.js
+//
+export var TodoModel = reduxUtils.modelBuilder({
+    name,
+    reducer,
+    actions,
+    selectors,
+    options: {react:{}}
+});
+```
+```javascript
+// YOUR COMPONENT.js
+//
+import React, {Component} from 'react';
+import {connect} from 'react-redux';
+import {TodoModel} from './todo-model.js';
+
+// do not export your component
+class TodoList extends Component {
+
+    // ~ snip ~
+
+    // you can call your model's actions inside event handlers 
+    addNote() {
+        TodoModel.actions.add('OMG duuuuude');
+    }
+}
+
+// export the result of the connect function
+export default connect(
+    TodoModel.reactSelectors    // <= this selector map is created for you
+)(TodoList);
+```
+
+That's it. To recap:
+
+* Build your selector map using functions (no strings, sorry!)
+* Add `options: { react: {} }` to your model
+* Use your model's new `reactSelectors` object in the `connect()` function of react-redux.
 
 # API
 

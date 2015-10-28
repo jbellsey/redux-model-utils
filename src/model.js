@@ -1,6 +1,7 @@
 var object     = require('./object'),
     waitable   = require('./waitable'),
     undoable   = require('./undoable'),
+    react      = require('./react'),
     subscribe  = require('./subscribe');
 
 /*
@@ -112,8 +113,17 @@ function modelBuilder(model) {
         if (model.options.waitable)
             waitable.makeWaitable(model);
 
+        // similar for undoable functionality. adds actions (undo, redo) and subscribable
+        // properties (undoLength, redoLength)
+        //
         if (typeof model.options.undoable === 'object')
-            undoable.makeUndoable(model)
+            undoable.makeUndoable(model);
+
+        // when using this library with react, prepare a selector map for use with
+        // the connect() function provided by react-redux
+        //
+        if (typeof model.options.react === 'object')
+            react.reactify(model)
     }
 
     //----------
