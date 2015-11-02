@@ -21,6 +21,7 @@ function externalizeSelectors(selectors, modelName) {
 
 function reactify(model) {
 
+    let id = 0;
     model.reactSelectors = externalizeSelectors(model.selectors || {}, model.name);
     model.newID = () => `${model.name}-${++id}`;
 }
