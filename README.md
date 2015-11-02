@@ -201,15 +201,16 @@ Strings are old-skool. They seem more brittle. They don't tell your IDE anything
 
 The main purpose for writing selectors in the first place is to hide your implementation
 from consumers (i.e., views). Views will typically need to know nothing about your internal data structures.
+The secondary purpose is to keep your reducer code clean.
  
 A view uses your selectors in the `subscribe()` function, which accepts either strings or functions. So from the
-perspective of writing your consuming code, there's literally no difference. 
+perspective of writing your views, there's literally no difference. 
 
 Inside your model code, however, you may find strings handy. If you're not composing selectors (and
 you're probably not), we have some convenient utility methods for setting a model property, but only
-if you use string selectors.
+if you use string selectors. And if you use lodash (e.g., `pluck`), you may find strings particularly useful.
 
-Or, to put it another way: a selector _string_ can be used for both reading and writing state.
+To put it another way: a selector _string_ can be used for both reading and writing state.
 A selector _function_ can only be used for reading.
 
 ### Selector strings
@@ -574,6 +575,11 @@ by `react-redux`.
 Note that in order to use this feature, your selectors must be functions rather than
 strings.
 
+In addition, your model will be given a new method `newID()`, which you can use to
+assign a unique ID to your model elements. Do not persist this ID to your database,
+as it creates IDs that are not guaranteed to be globally unique. If you need a true
+guid, or if you prefer to generates IDs another way, feel free to ignore this method.
+
 Here's a fuller example:
 
 ```javascript
@@ -609,6 +615,9 @@ class TodoList extends Component {
 export default connect(
     TodoModel.reactSelectors    // <= this selector map is created for you
 )(TodoList);
+
+// you can use the decorator form instead if you prefer:
+// @connect(TodoModel.reactSelectors) ...
 ```
 
 That's it. To recap:
