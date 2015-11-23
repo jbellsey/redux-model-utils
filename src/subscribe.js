@@ -31,8 +31,9 @@ function subscribe(selector, cb, opts) {
         handler = () => {
             let currentValue = val();
             if (previousValue !== currentValue) {
-                cb(currentValue, previousValue);
-                previousValue = currentValue
+                let temp = previousValue;
+                previousValue = currentValue;
+                cb(currentValue, temp);
             }
         };
 

@@ -100,7 +100,7 @@ In addition, you must make the following changes or additions to your code:
 
 * If you use the async action creator, you must install and set up `redux-thunk`
 * If you use the undoable feature, you must install `redux-undo`
-* You must use `combineReducers()` to build your map of reducers, even if you only have one.
+* You must use `combineReducers()` to build a nested map of reducers, even if you only have one.
   The library expects the stores to be managed separately, one per model, which `combineReducers()`
   does for you. There is a utility method `buildReducerMap()` to make this easy.
 * Immediately after creating your store, you must call `setStore()`
@@ -611,7 +611,7 @@ class TodoList extends Component {
     }
 }
 
-// export the result of the connect function
+// export the result of the connect function, provided by react-redux
 export default connect(
     TodoModel.reactSelectors    // <= this selector map is created for you
 )(TodoList);
@@ -625,6 +625,13 @@ That's it. To recap:
 * Build your selector map using functions (no strings, sorry!)
 * Add `options: { react: {} }` to your model
 * Use your model's new `reactSelectors` object in the `connect()` function of react-redux.
+
+Note that we didn't mention the `subscribe` function. When using React and `react-redux`,
+your entire state is sent to your component as props, so you don't need to subscribe.
+However, you can still use `subscribe` in other components as a way to keep track
+of changes to your model.
+
+Typically, `subscribe` is used in non-React-based applications.
 
 # API
 
@@ -906,7 +913,7 @@ installation and setup of `redux-thunk`.
 ##### buildReducerMap(modelArray)
 
 See the example above. This takes an array of models, and prepares them for 
-passing to `combineReducers()`. The result is an object whose keys are the
+passing to `combineReducers()`. The result is a nested object whose keys are the
 model names (provided by you as a `name` property on each model), and whose
 values are the reducers for each model.
 
