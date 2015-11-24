@@ -33,6 +33,39 @@ let unsubscribe = users.subscribe(users.selectors.userList, (users, previousUser
 });
 ```
 
+### Bundling your actions and reducers
+
+Here's a pattern that you might like. It packages each action with an atomic reducer.
+Notice how each key in the `actionMap` is an object that contains the action `code`,
+the `params` for the action creator, and the `reducer` for handling exactly that one action.
+
+```javascript
+var actionMap = {
+    addTodo: {
+        code:   'TODO_ADD',
+        params: ['text'],
+        reducer(state, action) {
+            state.todos = [...state.todos, action.text];
+            return state;
+        }
+    },
+    removeTodo: {
+        code:   'TODO_REMOVE',
+        params: ['index'],
+        reducer(state, action) {
+            state.todos = [
+                ...state.todos.slice(0, action.index),
+                ...state.todos.slice(action.index + 1)
+            ];
+            return state;
+        }
+    }
+};
+// ... then later ...
+model.actions.addTodo('Go for a soda');
+```
+
+
 ### Handy action-creation
 
 The `makeActionCreator()` code is standard-issue; we're all using it.
@@ -123,11 +156,16 @@ var model = {
     //--- required properties
     
     name,       // string
+    selectors,  // object; see below
     
+    // either:
     reducer,    // your reducer function
     actions,    // object; lists available action-creators
-    selectors,  // object; see below
-
+    
+    // or:
+    actionMap,  // a bundle that unpacks to your action creators and reducers
+    initialState,
+    
     //--- optional properties
     
     options     // object; options for model creation
@@ -140,18 +178,24 @@ module.exports = reduxUtils.modelBuilder(model);
 You must provide a `name` for your model, which must be globally unique, but
 not necessarily sluggish. (I.e., it can have mixed case and/or punctuation.)
 
-You must have a `reducer` property, which points to your reducer function.
-There is nothing special about its signature; just build a normal reducer. See the
-full example below.
-
 You must provide a list of `selectors`. These are strings or functions that are used
 to select specific properties in your model's store, and are described in the next
 section. One selector is needed for each observable property. You may also choose
 to define selectors for properties that are not externally observable, but are only 
 needed inside the reducer. That's up to you.
 
+For your reducer and actions, you have two choices.
+
+**Explicit**: You must have a `reducer` property, which points to your reducer function.
+There is nothing special about its signature; just build a normal reducer. See the
+full example below.
+
 You should (but do not need to) provide a list of `actions`. These are the publicly 
-available action creators for interacting with your model. 
+available action creators for interacting with your model.
+ 
+**Implicit**: Alternatively, you can provide an `actionMap`, which is a bundle
+that describes your action creators. Each action creator is packaged with an
+atomic reducer function for handling that one action. 
 
 You can optionally pass in some **magic triggers**. At present, there are two:
 `waitable` and `undoable`. Setting these flags will install some custom actions
@@ -325,6 +369,9 @@ It has one private action (`setLocation()`), which is called after we get the
 coordinates back from the API. There is
 one observable property (`location`), which is an object with the device's
 coordinates.
+
+In this example, we'll use the explicit form of exposing the `reducer` and
+`actions`. 
 
 The view code will be shown next.
 
@@ -632,6 +679,69 @@ However, you can still use `subscribe` in other components as a way to keep trac
 of changes to your model.
 
 Typically, `subscribe` is used in non-React-based applications.
+
+# Using an actionMap
+
+A useful pattern that this library enables is bundling each action with a single
+reducer which is only designed to respond to that action. Here again is the example
+from earlier:
+
+```javascript
+var actionMap = {
+    addTodo: {
+        code:   'TODO_ADD',
+        params: ['text'],           // parameters for the action creator
+        reducer(state, action) {    // each reducer handles only a single action
+            state.todos = [...state.todos, action.text];
+            return state;
+        }
+    },
+    removeTodo: {
+        code:   'TODO_REMOVE',
+        params: ['index'],
+        reducer(state, action) {
+            state.todos = [
+                ...state.todos.slice(0, action.index),
+                ...state.todos.slice(action.index + 1)
+            ];
+            return state;
+        }
+    }
+};
+```
+
+The action map has one key for each action. In this case, the parser will unpack your action map
+and create two keys in the `actions` object: `addTodo` and `removeTodo`. 
+
+Each key (i.e., each action) must provide a `code` with a globally-unique value (probably a 
+string). It must also provide a reducer function for responding to that action. You can also
+provide an array of `params` for the action creator. If no params are needed, you can omit this property.
+If only a single param is needed, you can use a string rather than an array of strings.
+
+If you use an action map, you should _not_ attach an `actions` object or a `reducer`
+function to your model. These will be created for you.
+
+Because you do not provide a master reducer, you must instead provide a fully-specified
+`initialState` object.
+
+```javascript
+module.exports = reduxUtils.modelBuilder({
+
+    name: 'todos',
+    selectors,      // not shown in this example
+    
+    actionMap,
+    initalState: {todos:[]}
+});
+```
+
+Notice how you do not explicitly specify the `actions` object, as in the other examples.
+This is created for you.
+
+```javascript
+model.actions.removeTodo(4);
+```
+
 
 # API
 

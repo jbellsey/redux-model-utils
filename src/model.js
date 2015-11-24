@@ -1,35 +1,36 @@
 var object     = require('./object'),
+    actions    = require('./actions'),
     waitable   = require('./waitable'),
     undoable   = require('./undoable'),
     react      = require('./react'),
     subscribe  = require('./subscribe');
 
 /*
-    adjust the model's selectors to include the model name, and possibly "present" to
-    account for the use of the redux-undo library.
+ adjust the model's selectors to include the model name, and possibly "present" to
+ account for the use of the redux-undo library.
 
-    our use of combineReducers() (see store.js) causes each model's store to be scoped
-    inside an object whose key is the model name.
+ our use of combineReducers() (see store.js) causes each model's store to be scoped
+ inside an object whose key is the model name.
 
-    so inside the model you may have a store that looks like this: {userID}. but
-    outside the model, that store looks like this: {model: {userID}}.
+ so inside the model you may have a store that looks like this: {userID}. but
+ outside the model, that store looks like this: {model: {userID}}.
 
-    so for consumers wanting to subscribe to changes on the model, they need to have
-    a selector prefixed with the model name: "model.userID". but inside the model,
-    you probably still need the unscoped version for use inside your reducer.
+ so for consumers wanting to subscribe to changes on the model, they need to have
+ a selector prefixed with the model name: "model.userID". but inside the model,
+ you probably still need the unscoped version for use inside your reducer.
 
-        ORIGINAL:  selector.location = "location"
-        MODIFIED:  selector.location = modelName + ".location"
+ ORIGINAL:  selector.location = "location"
+ MODIFIED:  selector.location = modelName + ".location"
 
-    if the model is undoable, the selectors are then scoped to "present":
+ if the model is undoable, the selectors are then scoped to "present":
 
-        UNDOABLE:  selector.location = modelName + ".present.location";
+ UNDOABLE:  selector.location = modelName + ".present.location";
 
-    NOTE: this actually SEVERS the connection to [model.selectors], and inserts an
-    entirely new object map.
-*/
+ NOTE: this actually SEVERS the connection to [model.selectors], and inserts an
+ entirely new object map.
+ */
 
-    let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
+let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
 
 function mapSelectors(model) {
 
@@ -83,7 +84,67 @@ function mapSelectors(model) {
     Object.keys(newSelectors).forEach(fixOneSelector);
 
     // look! we're overwriting your selector map!
+    model.rawSelectors = model.selectors;
     model.selectors = newSelectors;
+}
+
+/*
+    if provided, the action map must be in this format:
+        actionMap = {
+            key: {
+                code:   UNIQUE_STRING,
+                params: [array, of, strings, for, action, creator]
+                reducer(state, action) => {}
+            }
+        }
+
+    and if you provide it, you must also attach an "initialState" object to the model.
+ */
+
+function find(arr, predicate) {
+
+    var value, i;
+    for (i = 0; i < arr.length; ++i) {
+        if (predicate(value = arr[i]))
+            return value;
+    }
+    return undefined;
+}
+
+function parseActionMap(model) {
+
+    var listOfActions  = {},
+        listOfReducers = [];
+
+    Object.keys(model.actionMap).forEach(key => {
+
+        let actionDetails = model.actionMap[key],
+            params        = actionDetails.params;
+
+        if (typeof params === 'string')
+            params = [params];
+        else if (!params)
+            params = [];
+
+        // add an action-creator
+        listOfActions[key] = actions.makeActionCreator(actionDetails.code, ...params);
+
+        // install the reducer
+        listOfReducers.push({
+            code: actionDetails.code,
+            fnc:  actionDetails.reducer
+        });
+    });
+
+    // the output of the actionMap: actions & reducer
+    model.actions = listOfActions;
+    model.reducer = (state = model.initialState, action = {}) => {
+
+        var reducer = find(listOfReducers, reducer => reducer.code === action.type);
+        if (reducer)
+            state = reducer.fnc(state, action);
+        return state;
+    };
 }
 
 // modify the public API for each model.
@@ -97,6 +158,11 @@ function modelBuilder(model) {
     // pass through the subscribe method, so views don't have to import this library
     //
     model.subscribe = subscribe.subscribe;
+
+    //----------
+    // the user can specify actions & reducer in the form of an actionMap; see above
+    if (model.actionMap && model.initialState)
+        parseActionMap(model);
 
     //----------
     // MAGIC code
