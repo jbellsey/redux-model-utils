@@ -742,6 +742,28 @@ This is created for you.
 model.actions.removeTodo(4);
 ```
 
+To build an asynchronous action using an action map, include a key `async`. Params are again
+optional. No need to provide `code` or `reducer`.
+
+```javascript
+var actionMap = {
+    save: {
+        params: 'recordID',
+        async: (recordID) => {
+            // do asynchronous things. you can call other
+            // actions, as long as you keep a reference to
+            // the model around. return a promise for chaining
+            model.wait();
+            return api.save(recordID);
+                .then(() => model.stopWaiting());
+        }
+    }
+};
+// keep a reference to the constructed model, so we can call its actions above
+var model = module.exports = reduxUtils.modelBuilder( /* ... */ );
+// ... then later ...
+model.actions.save(44).then(closeForm);
+```
 
 # API
 
@@ -789,7 +811,8 @@ This utility enables easy async actions. **Note**: if you use this tool, you mus
 also install and configure [redux-thunk](https://github.com/gaearon/redux-thunk).
 
 The callback's signature is `args => {}`, where `args` is an object map of the 
-arguments you indicate in `argNames`. The callback does not return any value.
+arguments you indicate in `argNames`. The callback's return value is passed back
+to the caller.
 
 Here's a common pattern for running an AJAX query:
 
@@ -807,17 +830,15 @@ let privateActions = {
 },
 let actions = {
     // make an async action that takes one argument ('username').
-    // it will be invoked in your view code like this:
-    //      model.query('harry');
-    query: reduxUtils.makeAsyncAction(argObj => {
+    query: reduxUtils.makeAsyncAction(args => {
 
         // run a synchronous action, perhaps to invalidate the cache.
         // you might also call 'actions.wait()' if your model is a waitable
         //
         privateActions.startQuery();
 
-        // start the async operation
-        fetch(`http://myapi.com/u/${argObj.username}`)
+        // start the async operation. we return a promise, so the user can chain
+        return fetch(`http://myapi.com/u/${args.username}`)
               .then(response => {
               
                   // query is done. run another synchronous action to store the data.
@@ -826,6 +847,8 @@ let actions = {
               });
     }, 'username')
 };
+// ... later ...
+model.actions.query('harry').then(showProfilePage);
 ```
 
 ##### makeCodes(codes)

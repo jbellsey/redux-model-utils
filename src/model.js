@@ -126,14 +126,19 @@ function parseActionMap(model) {
         else if (!params)
             params = [];
 
-        // add an action-creator
-        listOfActions[key] = actions.makeActionCreator(actionDetails.code, ...params);
+        // add an action-creator. async is handled differently
+        if (actionDetails.async) {
+            listOfActions[key] = actions.makeAsyncAction(actionDetails.async, ...params);
+        }
+        else {
+            listOfActions[key] = actions.makeActionCreator(actionDetails.code, ...params);
 
-        // install the reducer
-        listOfReducers.push({
-            code: actionDetails.code,
-            fnc:  actionDetails.reducer
-        });
+            // install the reducer
+            listOfReducers.push({
+                code: actionDetails.code,
+                fnc:  actionDetails.reducer
+            });
+        }
     });
 
     // the output of the actionMap: actions & reducer

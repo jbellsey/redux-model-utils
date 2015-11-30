@@ -75,7 +75,8 @@ function makeAsyncAction(cb, ...argNames) {
         //
             thunk     = (dispatch, getState) => cb(argObject, dispatch, getState);
 
-        store().dispatch(thunk);
+        // we pass back the result of the user's callback. e.g., return a promise for chaining
+        return store().dispatch(thunk);
     }
 }
 
