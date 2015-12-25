@@ -3,7 +3,30 @@ var object     = require('./object'),
     waitable   = require('./waitable'),
     undoable   = require('./undoable'),
     react      = require('./react'),
+    store      = require('./store'),
     subscribe  = require('./subscribe');
+
+
+let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
+
+// create direct getters for accessing the underlying model: "model.data.property"
+// one accessor is created for each selector in your list (and with the same name)
+// we also create a top-level accessor "model.allData" to retrieve the full state.
+//
+function buildAccessors(model) {
+
+    model.data = {};
+
+    Object.keys(model.selectors).forEach(key => {
+        Object.defineProperty(model.data, key, {
+            get: () => object.lookup(store.getStore().getState(), model.selectors[key])
+        });
+    });
+
+    Object.defineProperty(model, 'allData', {
+        get: () => store.getStore().getState()[model.name]
+    });
+}
 
 /*
  adjust the model's selectors to include the model name, and possibly "present" to
@@ -29,8 +52,6 @@ var object     = require('./object'),
  NOTE: this actually SEVERS the connection to [model.selectors], and inserts an
  entirely new object map.
  */
-
-let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
 
 function mapSelectors(model) {
 
@@ -202,6 +223,9 @@ function modelBuilder(model) {
 
     // make some changes to the selectors object
     mapSelectors(model);
+
+    // build a list of accessors for getting the underlying data
+    buildAccessors(model);
 
     //----------
     // close it up!

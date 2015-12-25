@@ -176,7 +176,8 @@ module.exports = reduxUtils.modelBuilder(model);
 ```
 
 You must provide a `name` for your model, which must be globally unique, but
-not necessarily sluggish. (I.e., it can have mixed case and/or punctuation.)
+not necessarily sluggish. (I.e., it can have mixed case and/or punctuation. It's
+used as a key in a POJO.)
 
 You must provide a list of `selectors`. These are strings or functions that are used
 to select specific properties in your model's store, and are described in the next
@@ -313,6 +314,21 @@ to set the location. The `deep-assign` library solves that problem, which is why
 it's used as a helper in this library.
 
 But you still have the verbosity problem. If you prefer the longer version, go for it. 
+
+### Data accessors
+
+As a convenience, you also get an accessor for each selector, so you can retrieve 
+data from the store at any time. An object called `data` is created for you and
+attached to your model; its keys match those in your selectors. To get the full 
+store, use the object called `allData`.
+
+```javascript
+// this data object and its accessors are created for you
+var userID = model.data.userID,         
+    color  = model.data.colorScheme,
+    all    = model.allData;
+```
+
 
 # Actions
 
@@ -749,20 +765,26 @@ optional. No need to provide `code` or `reducer`.
 var actionMap = {
     save: {
         params: 'recordID',
-        async: (recordID) => {
+        async(params) {
             // do asynchronous things. you can call other
             // actions, as long as you keep a reference to
             // the model around. return a promise for chaining
             model.wait();
-            return api.save(recordID);
+            return api.save(params.recordID);
                 .then(() => model.stopWaiting());
         }
+    },
+    // example of an async action with no params: a one-second timer-promise
+    timer1000: {
+        async: () => new Promise(resolve => setTimeout(resolve, 1000));
     }
 };
 // keep a reference to the constructed model, so we can call its actions above
 var model = module.exports = reduxUtils.modelBuilder( /* ... */ );
+
 // ... then later ...
 model.actions.save(44).then(closeForm);
+model.actions.timer1000().then(smile);
 ```
 
 # API
