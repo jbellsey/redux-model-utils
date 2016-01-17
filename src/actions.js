@@ -1,31 +1,5 @@
 var store = require('./store').getStore;
 
-/*
-    this is a common pattern for setting up action codes:
-
-        let actionCodes = {
-            CTR_INCR: 'CTR_INCR',
-            CTR_DECR: 'CTR_DECR'
-        }
-
-    this utility lets you skip half of the typing by using an array instead.
-
-        let actionCodes = makeCodes([
-            'CTR_INCR',
-            'CTR_DECR'
-        ]);
-
-    the result is the same. the benefit is usually minimal, but useful. the downside
-    is that your IDE may provide less assistance.
-*/
-
-function makeCodes(codes) {
-    return codes.reduce((map, code) => {
-        map[code] = code;
-        return map;
-    }, {});
-}
-
 // returns a redux-standard action object. it always has a {type} key,
 // plus whatever values you request in the [valueNames] and [values] arrays.
 // this should not typically be needed by client applications; use the other
@@ -81,7 +55,6 @@ function makeAsyncAction(cb, ...argNames) {
 }
 
 module.exports = {
-    makeCodes,
     makeActionCreator,
     makeAsyncAction
 };

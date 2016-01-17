@@ -11,6 +11,11 @@ var packages = {
         inputFiles:   './spec/_index.js',
         outputFolder: './dist/',
         outputFile:   'spec.js'
+    },
+    runOne: {
+        inputFiles:   './spec/model.js',
+        outputFolder: './spec/',
+        outputFile:   'model-es5.js'
     }
 };
 
@@ -35,6 +40,7 @@ var browserifier = pkg => {
         .pipe(gulp.dest(outputFolder))
 };
 
+gulp.task('browserify-runone', () => browserifier('runOne'));
 gulp.task('browserify-tests', () => browserifier('test'));
 gulp.task('browserify', () => browserifier('code'));
 gulp.task('default', () => browserifier('code'));
@@ -44,7 +50,8 @@ gulp.task('spec', ['browserify-tests'], () => {
     var jasmine = require('gulp-jasmine'),
         testFiles = './dist/spec.js',
         opts = {
-            //verbose: true
+            verbose: true,
+            includeStackTrace: true
         };
 
     return gulp.src(testFiles)

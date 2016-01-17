@@ -15,13 +15,14 @@ let startsWith = (haystack, needle) => haystack.indexOf(needle) === 0;
 //
 function buildAccessors(model) {
 
-    model.data = {};
+    let data = {};
 
     Object.keys(model.selectors).forEach(key => {
-        Object.defineProperty(model.data, key, {
+        Object.defineProperty(data, key, {
             get: () => object.lookup(store.getStore().getState(), model.selectors[key])
         });
     });
+    model.data = data;
 
     Object.defineProperty(model, 'allData', {
         get: () => store.getStore().getState()[model.name]
@@ -56,7 +57,7 @@ function buildAccessors(model) {
 function mapSelectors(model) {
 
     // make a full copy of the selectors
-    let newSelectors    = object.clone(model.selectors),
+    let newSelectors    = object.clone(model.selectors || {}),
         isUndoable      = model.options && model.options.undoable,
         presentPrefix   = 'present.',
         pastPrefix      = 'past.',
@@ -140,6 +141,7 @@ function parseActionMap(model) {
     Object.keys(model.actionMap).forEach(key => {
 
         let actionDetails = model.actionMap[key],
+            code          = `${model.name}_${actionDetails.code}`,
             params        = actionDetails.params;
 
         if (typeof params === 'string')
@@ -152,11 +154,11 @@ function parseActionMap(model) {
             listOfActions[key] = actions.makeAsyncAction(actionDetails.async, ...params);
         }
         else {
-            listOfActions[key] = actions.makeActionCreator(actionDetails.code, ...params);
+            listOfActions[key] = actions.makeActionCreator(code, ...params);
 
             // install the reducer
             listOfReducers.push({
-                code: actionDetails.code,
+                code,
                 fnc:  actionDetails.reducer
             });
         }
@@ -211,11 +213,10 @@ function modelBuilder(model) {
         if (typeof model.options.undoable === 'object')
             undoable.makeUndoable(model);
 
-        // when using this library with react, prepare a selector map for use with
-        // the connect() function provided by react-redux
+        // for usage of this library with react, prepare a selector map for use with
+        // the connect() function provided by react-redux. does not affect non-react apps.
         //
-        if (typeof model.options.react === 'object')
-            react.reactify(model)
+        react.reactify(model);
     }
 
     //----------

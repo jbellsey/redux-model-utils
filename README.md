@@ -1,101 +1,103 @@
 
-# Why? What do I get?
+You have in your hands a set of model-building utilities for redux apps. Like redux itself, this library
+works very well whether or not you use React for rendering.
+ 
+To use this library, you'll need to build your models using the patterns described below. These
+patterns, in effect, ARE the library.
 
-### Easy subscriptions
+Before showing you the full documentation, let's take a look at what your code will look like when
+you use this library.
 
-Here's the verbose way to set up a subscription:
+# Model-building patterns
 
-```javascript
-function select(state) {
-  return state.some.deep.property;
-}
+### Atomic actions and reducers
 
-let currentValue;
-function handleChange() {
-  let previousValue = currentValue;
-  currentValue = select(store.getState());
-
-  if (previousValue !== currentValue) {
-    console.log('Some deep nested property changed from', previousValue, 'to', currentValue);
-  }
-}
-
-let unsubscribe = store.subscribe(handleChange);
-```
-
-Here's our way. Your callback is only invoked when the value has changed, so you can
-usually omit the second parameter. Notice that the view only speaks to the model,
-not the store.
+Here's an incomplete code snippet that shows something called an *action map*. An action map 
+bundles together everything needed for a single, public, executable action. Witness:
 
 ```javascript
-let unsubscribe = users.subscribe(users.selectors.userList, (users, previousUserList) => {
-    console.log('User list changed from', previousUserList, 'to', users);
-});
-```
-
-### Bundling your actions and reducers
-
-Here's a pattern that you might like. It packages each action with an atomic reducer.
-Notice how each key in the `actionMap` is an object that contains the action `code`,
-the `params` for the action creator, and the `reducer` for handling exactly that one action.
-
-```javascript
-var actionMap = {
+let actionMap = {
+    // each key in the map is converted into an action-creator of the same name
     addTodo: {
-        code:   'TODO_ADD',
-        params: ['text'],
-        reducer(state, action) {
+        code:   'TODO_ADD',         // private to this module. consumers don't see this
+        params: ['text'],           // parameters for the action creator 
+        reducer(state, action) {    // atomic reducer for this one action
             state.todos = [...state.todos, action.text];
             return state;
         }
     },
-    removeTodo: {
-        code:   'TODO_REMOVE',
-        params: ['index'],
-        reducer(state, action) {
-            state.todos = [
-                ...state.todos.slice(0, action.index),
-                ...state.todos.slice(action.index + 1)
-            ];
-            return state;
-        }
+    removeTodo: { 
+        // (similar) 
     }
 };
-// ... then later ...
-model.actions.addTodo('Go for a soda');
+
+// ... then later, in your view ...
+todoModel.actions.addTodo('Go for a soda');
 ```
 
+No more `switch` statements in big reducers that handle multiple actions.
+No need for public-facing action codes.
+No need to do your own `dispatch`.
 
-### Handy action-creation
-
-The `makeActionCreator()` code is standard-issue; we're all using it.
-Note that this will bundle a call to `store.dipsatch()`, which is why the
-use of this function is optional.
-
-```
-let addTodo = reduxUtils.makeActionCreator('ADD_TODO', 'text');
-addTodo('Sell car');
-```
-
-There's also a friendly way to manage your async actions.
+While action maps are sweet, you don't have to use them.
+You can use another utility function `makeActionCreator`,
+which is straight from the redux docs.
 
 ```javascript
-let query = reduxUtils.makeAsyncAction(args => {
-            
-        // run a synchronous action
-        invalidateCache();
-    
-        // start an asyc operation
-        retreiveDataFor(args.username, newData => {
-    
-            // when it's done, run another synchronous action
-            setUserData(newData);
-        });
-    }, 'username');
-query('jeff');
+let addTodo = reduxModelUtils.makeActionCreator('TODO_ADD', 'text');
+addTodo('Sell car');    // dispatch is called for you
 ```
 
-### Add instant functionality
+There are also tools for async actions, described below.
+
+### Direct read-only access to the model state
+
+Here's a snippet from a model used for non-UI data,
+which shows how you can peek into the properties of any model, not just those which you `connect` 
+to your components. Caveat follows the code.
+
+```javascript
+let initialState = {
+        token:     null,
+        pollTimer: null
+    },
+    // selectors are described in detail later. briefly: they
+    // are  roadmaps that allow a consumer to retrieve (or set)
+    // a property in the state. they are converted into
+    // read-only properties on the model's "data" object, as shown
+    // a few lines down
+    selectors = {
+        token:     state => state.token,
+        pollTimer: state => state.pollTimer
+    };
+
+// ... then later, in your view ...
+let token = uiModel.data.token;
+```
+
+This means you don't need to `connect` every model to every component.
+Peek into any model you like.
+
+*Caveat*: This is convenient, but not often a best practice. In React apps,
+you'll typically use `mergeReactSelectors` to ensure your views are responsive
+to changes across multiple models. And in non-React apps, you'll typically use
+`subscribe` to track changes. So use with caution.
+
+### Change-notification (subscriptions)
+
+Built on top of redux's subscription tool, this allows you to get notified only when
+a property is changed. Use this for cross-cutting concerns. (In non-React apps, this 
+will be your main rendering trigger.)
+
+```javascript
+let unsubscribe = uiModel.subscribe(uiModel.selectors.fontSize, (newFontSize, oldFontSize) => {
+    // callback is called once at initialization time, and then only
+    // when the property changes
+    console.log(`Font size changed from ${oldFontSize} to ${newFontSize}`);
+});
+```
+
+### Instant functionality
 
 Adding a spinner to your async operations just got trivial. In one
 line of code, you can add two actions to your model (`wait()` and 
@@ -106,7 +108,7 @@ is super-easy. With one line of code, you get `undo()` and `redo()`
 actions, as well as observables for tracking the size of the undo stack.
 
 The code required to add these features is very simple, but needs some 
-explanation, so we'll defer for a bit.
+explanation, so we'll show it to you in a bit.
  
 ### Common object-management utilities
 
@@ -126,32 +128,26 @@ This library uses `node-clone`, `deep-assign`, and of course `redux`.
 To install:
 
 ```
-npm install --save jbellsey/redux-utils
+npm install --save jbellsey/redux-model-utils
 ```
 
 In addition, you must make the following changes or additions to your code:
 
-* If you use the async action creator, you must install and set up `redux-thunk`
+* If you use async actions, you must install and set up `redux-thunk`
 * If you use the undoable feature, you must install `redux-undo`
 * You must use `combineReducers()` to build a nested map of reducers, even if you only have one.
   The library expects the stores to be managed separately, one per model, which `combineReducers()`
-  does for you. There is a utility method `buildReducerMap()` to make this easy.
+  does for you. There is a utility method `buildReducerMap()` to make this easy. Example below.
 * Immediately after creating your store, you must call `setStore()`
-
-# Context
-
-This library is not tied to React. You can use it with jQuery apps if that's your thing.
-(Not that there's anything wrong with that.)
-
-However, you can easily use it in a React app. Details below.
 
 # Model structure
 
 Part of the power of this library is not just in the functions it provides, but in
-the structure it imposes on your models.
+the structure it imposes on your models. Here's an outline of how every model will look.
+Details immediately below.
 
 ```javascript
-var model = {
+let model = {
 
     //--- required properties
     
@@ -159,20 +155,20 @@ var model = {
     selectors,  // object; see below
     
     // either:
-    reducer,    // your reducer function
-    actions,    // object; lists available action-creators
-    
-    // or:
-    actionMap,  // a bundle that unpacks to your action creators and reducers
+    actionMap,  // a bundle that unpacks to your action creators and atomic reducers
     initialState,
-    
+
+    // or:
+    reducer,    // your master reducer function (for all actions)
+    actions,    // list of action-creators
+
     //--- optional properties
     
     options     // object; options for model creation
 }
 
 // before exporting your model, run it through this munger. see below.
-module.exports = reduxUtils.modelBuilder(model);
+module.exports = reduxModelUtils.modelBuilder(model);
 ```
 
 You must provide a `name` for your model, which must be globally unique, but
@@ -180,23 +176,21 @@ not necessarily sluggish. (I.e., it can have mixed case and/or punctuation. It's
 used as a key in a POJO.)
 
 You must provide a list of `selectors`. These are strings or functions that are used
-to select specific properties in your model's store, and are described in the next
+to expose specific properties in your model's store, and are described in the next
 section. One selector is needed for each observable property. You may also choose
 to define selectors for properties that are not externally observable, but are only 
 needed inside the reducer. That's up to you.
 
 For your reducer and actions, you have two choices.
 
-**Explicit**: You must have a `reducer` property, which points to your reducer function.
+**Implicit**: You can provide an action map, which is a bundle
+that describes your action creators. Each action creator is packaged with an
+atomic reducer function for handling that one action.
+
+**Explicit**: Alternatively, you can provide a list of actions (using `makeActionCreator`).
+If you do, you must also have a `reducer` property for your master reducer function.
 There is nothing special about its signature; just build a normal reducer. See the
 full example below.
-
-You should (but do not need to) provide a list of `actions`. These are the publicly 
-available action creators for interacting with your model.
- 
-**Implicit**: Alternatively, you can provide an `actionMap`, which is a bundle
-that describes your action creators. Each action creator is packaged with an
-atomic reducer function for handling that one action. 
 
 You can optionally pass in some **magic triggers**. At present, there are two:
 `waitable` and `undoable`. Setting these flags will install some custom actions
@@ -205,7 +199,8 @@ and selectors on your model; details below.
 # About selectors
 
 Selectors are roadmaps; they hold the algorithm to finding a specific property in
-your store.
+your store. They are used outside your model (for observable properties), and
+inside your model (for your own convenience when building reducers).
 
 They come in two forms. Each has its advantages and disadvantages, but they are
 both fully implemented.
@@ -230,7 +225,7 @@ let stringSelectors = {
     colorScheme: 'preferences.colorScheme',
     fontSize:    'preferences.fontSize'
 };
-// or
+// ...or...
 let functionSelectors = {
     userID:      state => state.userID,
     colorScheme: state => state.preferences.colorScheme,
@@ -240,53 +235,40 @@ let functionSelectors = {
 
 ### Strings vs. functions
 
-Functions are hip. They compose. They're fun to write.
+You can use either. However, string selectors have the added advantage
+that they can be used for *writing* to your model, as well as *reading* from it.
+With function selectors, you can only read. Have a look at the object-related
+utility functions below (e.g., `cloneAndAssign`).
 
-Strings are old-skool. They seem more brittle. They don't tell your IDE anything about semantic content.
-
-The main purpose for writing selectors in the first place is to hide your implementation
-from consumers (i.e., views). Views will typically need to know nothing about your internal data structures.
-The secondary purpose is to keep your reducer code clean.
- 
-A view uses your selectors in the `subscribe()` function, which accepts either strings or functions. So from the
-perspective of writing your views, there's literally no difference. 
-
-Inside your model code, however, you may find strings handy. If you're not composing selectors (and
-you're probably not), we have some convenient utility methods for setting a model property, but only
-if you use string selectors. And if you use lodash (e.g., `pluck`), you may find strings particularly useful.
-
-To put it another way: a selector _string_ can be used for both reading and writing state.
-A selector _function_ can only be used for reading.
-
-### Selector strings
+Here's an example using selector strings:
 
 ```javascript
 // a string selector is usable in the reducer. keeps things dry.
-var locationSelectorString = 'preferences.location';
+let locationSelectorString = 'preferences.location';
 
 function reducer(state = initialState, action = {}) {
 
     switch (action.type) {
-    
+
         case actionCodes.SET_LOCATION:
-            // so nice. even the reducer doesn't expressly know about the model structure
-            return reduxUtils.cloneAndAssign(state, locationSelectorString, action.location);
+            // so nice: with one line, we clone the state and modify one
+            // property (which may be deeply nested). as a bonus, even
+            // the reducer doesn't expressly know about the model structure
+            return reduxModelUtils.cloneAndAssign(state, locationSelectorString, action.location);
     }
     return state;
 }
 ```
 In one line of code, you duplicate the state and change one deeply-nested property. But this
-only works with a string selector. To do the same with a function selector, well, you can't.
-You have to do it manually. 
+only works with a string selector.
 
-### Selector functions
-
-A selector function may be beneficial in many ways. But one way it falls short is that it's
-unusable inside your reducer. 
+To do the same with a function selector, well, you can't.
+You have to do it manually (which is fine, of course). Here's the
+same example, rewritten with a selector function:
 
 ```javascript
 // a function selector is not usable inside the reducer
-var locationSelectorFunc = state => state.preferences.location;
+let locationSelectorFunc = state => state.preferences.location;
 
 function reducer(state = initialState, action = {}) {
 
@@ -294,7 +276,7 @@ function reducer(state = initialState, action = {}) {
     
         case actionCodes.SET_LOCATION:
             // more verbose. and less dry.
-            return reduxUtils.cloneAndMerge(state, {
+            return reduxModelUtils.cloneAndMerge(state, {
                 preferences: {
                     location: action.location;
                 }
@@ -304,16 +286,8 @@ function reducer(state = initialState, action = {}) {
 }
 ```
 Here we've used our `cloneAndMerge()` function to duplicate the state and merge
-in the new location value. 
-
-The merge operation uses
-[deep-assign](https://github.com/sindresorhus/deep-assign), which is a smarter
-version of `Object.assign()`. The latter (and all polyfills) will clobber the entire 
-`preferences` object, so if you had other keys, they would be lost when the user only wanted
-to set the location. The `deep-assign` library solves that problem, which is why
-it's used as a helper in this library.
-
-But you still have the verbosity problem. If you prefer the longer version, go for it. 
+in the new location value. This is a smarter version of `Object.assign`,
+detailed below.
 
 ### Data accessors
 
@@ -323,55 +297,13 @@ attached to your model; its keys match those in your selectors. To get the full
 store, use the object called `allData`.
 
 ```javascript
-// this data object and its accessors are created for you
-var userID = model.data.userID,         
-    color  = model.data.colorScheme,
-    all    = model.allData;
+// this data object and its accessors are created for you.
+// here's how you might use them in your component
+let userID = prefsModel.data.userID,
+    color  = prefsModel.data.colorScheme,
+    all    = prefsModel.allData;
 ```
 
-
-# Actions
-
-Here is a map of actions. It is not strictly required by any of the library code, but as a pattern
-it is quite useful. This is a typical way to construct the map inside your model:
-
-```javascript
-// putting codes into an object is not mandatory. it's handy for staying dry, since
-// the codes are used for creating actions and for responding to them.
-//
-let actionCodes = {
-    CTR_INCR: 'CTR_INCR',
-    CTR_DECR: 'CTR_DECR'
-};
-
-// the action creators are Standard Issue. we just wrap them into a mapping object
-//
-let actions = {
-    incr: reduxUtils.makeActionCreator(actionCodes.CTR_INCR, 'value'),
-    decr: reduxUtils.makeActionCreator(actionCodes.CTR_DECR, 'value')
-};
-```
-
-When you export the `actions` object, your view code can invoke actions easily
-by calling your code like this: `model.actions.incr(4)`. 
-
-Of course, if you prefer your actions to be objects, or functions without
-an automatic dispatch, you can create them that way as well. This library 
-adds shorthand for many common patterns, but doesn't prevent you from using
-your own.
-
-```javascript
-// you can do this too; it's standard redux.
-//
-let actions = {
-    incr: (value) => { type: actionCodes.CTR_INCR, value },  
-    decr: (value) => { type: actionCodes.CTR_DECR, value }  
-}
-
-// ... then, in your view, you need to import redux, so you can use dispatch:
-//
-dispatch(model.actions.incr(4))
-```
 
 # OMG JUST SHOW ME
 
@@ -381,126 +313,154 @@ useful patterns for constructing models.
 
 This model has one public action (`getLocation()`),
 which triggers an async request to the browser for its latitude and longitude.
-It has one private action (`setLocation()`), which is called after we get the
+It has one private action (`_setLocation()`), which is called after we get the
 coordinates back from the API. There is
 one observable property (`location`), which is an object with the device's
 coordinates.
 
-In this example, we'll use the explicit form of exposing the `reducer` and
-`actions`. 
-
-The view code will be shown next.
+In this example, we'll use an action map. The view code will be shown next.
 
 ```javascript
-var   reduxUtils  = require('redux-utils');
+let   reduxModelUtils  = require('redux-model-utils'),
+      model;    // set below
 
 const // prepare an empty store. you're doing this already.
-      initialState = {
-          location: {}
-      },
-      // dot-notation strings to look at properties of our model, as described above.
-      // in our case, the model is only one level deep, so there are no dots :)
-      selectors = {
-          location: 'location'
-      },
-      // action codes are not exported; they are private to the model
-      actionCodes = {
-          SET_LOCATION: 'SET_LOCATION'
-      },
-      // these private actions are also not exported. the "setLocation" action is synchronous
-      privateActions = {
-          setLocation: reduxUtils.makeActionCreator(actionCodes.SET_LOCATION, 'location')
-      },
-      // this list of actions (only one in this case) is exported and public. there are
-      // two additional public actions (wait and stopWaiting) that are installed because
-      // we set the "waitable" option on the export statement below.
-      actions = {
-          // querying the device location is async. we have a tool for that.
-          // also, the action itself takes no parameters.
-          getLocation: reduxUtils.makeAsyncAction(() => {
+    initialState = {
+        location: {}
+    },
+    // dot-notation strings to look at properties of our model, as described above.
+    // in our case, the model is only one level deep, so there are no dots :)
+    selectors = {
+        location: 'location'    // could also have been a function: state => state.location
+    },
+    // the action map is internally converted into an "actions" object, as described above.
+    // two additional public actions (wait and stopWaiting) are installed because
+    // we set the "waitable" option on the export statement below.
+    actionMap = {
 
-              // create some callbacks for the geolocation API
-              let err = () => {
-                      privateActions.setLocation({});
-                      
-                      // this (synchronous) action is magically installed because 
-                      // we flagged the model as "waitable"
-                      actions.stopWaiting();
-                  },
-                  success = position => {
-                      privateActions.setLocation({
-                          latitude:  position.coords.latitude,
-                          longitude: position.coords.longitude
-                      });
-                      actions.stopWaiting();
-                  };
+        // this action is semi-private. to create a truly private action you cannot use
+        // an action map. instead, use makeActionCreator
+        _setLocation: {
+            code:    'set',      // code doesn't need to be globally unique; just unique within this module
+            params:  'location', // only one param for the action creator
 
-              // run a synchronous action, which is installed by our use of "waitable" below
-              actions.wait();
+            // the reducer is atomic, only used for this one action, which makes it trivial.
+            // the use of "cloneAndAssign" (and its use of the selector string) is a common pattern
+            reducer: (state, action) => reduxModelUtils.cloneAndAssign(state, selectors.location, action.location)
+        },
 
-              // do the actual work: ask the browser where it is
-              if (navigator && "geolocation" in navigator)
-                  navigator.geolocation.getCurrentPosition(success, err, {maximumAge: 60000});
-              else
-                  err();
-          })
-      };
+        // this is the only action that should be called by views. it takes no params,
+        // and is asynchronous
+        getLocation: {
+            async() {
 
-// nothing to see here; just a normal reducer
-function reducer(state = initialState, action = {}) {
+                // create some callbacks for the geolocation API
+                let err = () => {
+                        // call the private action to clear out the state
+                        model.actions._setLocation({});
 
-    switch (action.type) {
-        case actionCodes.SET_LOCATION:
-            // use the provided function "cloneAndAssign" to keep the reducer pure.
-            // note the use of "selectors.location", which tells the copier what property
-            // to overwrite. in other words, here is the impure version of what we're doing:
-            //      state.location = action.location
-            return reduxUtils.cloneAndAssign(state, selectors.location, action.location);
-    }
-    return state;
-}
+                        // this (synchronous) action is magically installed because
+                        // we flag the model as "waitable"
+                        model.actions.stopWaiting();
+                    },
+                    success = position => {
+                        // we call the private action here. the variable "model" is set below
+                        model.actions._setLocation({
+                            latitude:  position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                        model.actions.stopWaiting();
+                    };
 
-// run the model object through a custom tool ("modelBuilder"), which whips it into shape
-module.exports = reduxUtils.modelBuilder({
+                // this (synchronous) action is installed by our use of "waitable" below
+                model.actions.wait();
+
+                // do the actual work: ask the browser where it is
+                if (navigator && "geolocation" in navigator)
+                    navigator.geolocation.getCurrentPosition(success, err, {maximumAge: 60000});
+                else
+                    err();
+            }
+        }
+    };
+
+// run the model object through a custom tool ("modelBuilder"), which whips it into shape.
+// we cache a reference to the finished model, so we can call actions from inside this module
+module.exports = model = reduxModelUtils.modelBuilder({
 
     name: 'geo',
+    selectors,
+
+    // these properties are used to build an actions object
+    actionMap,
+    initialState,
 
     // this causes two new actions to be installed (wait and stopWaiting), and a new
-    // property on the model called "waiting"
+    // property on the model's state called "waiting"
     options: {
         waitable: true
     }
-
-    // export the core attributes of the model
-    reducer,
-    actions,
-    selectors
 });
 ```
 
 The view which uses the model is utterly trivial. Note that it doesn't need to 
-import either `redux` or `redux-utils`; just the relevant model.
+import `redux-model-utils`; just the relevant model.
+
+Here's a React component that uses the model. A vanilla version is shown next.
 
 ```javascript
-var geo     = require('./models/geo'),
-    btn     = document.getElementById('geoTrigger'),
-    output  = document.getElementById('geoOutput');
+const React     = require('react'),
+      {connect} = require('react-redux'),
+      geoModel  = require('./models/geo');
+
+let MyGeoComponent = React.createClass({
+
+    componentWillMount() {
+        // start the async query here. could also be attached
+        // to a button handler, as in the vanilla example above
+        geoModel.actions.getLocation();
+    },
+
+    render() {
+
+        let spinner = this.props.waiting ? <Spinner /> : null,
+            output  = JSON.stringify(this.props.location);      // ugly
+
+        return (
+            <div>
+                {spinner}
+                {output}
+            </div>
+        );
+    }
+});
+
+// "reactSelectors" is created for you, and ensures that your selectors are
+// all available as props. in this case, that means "location" and "waiting"
+export default connect(geoModel.reactSelectors)(MyGeoComponent);
+```
+
+A similar view in vanilla. In this case, we don't even have to import redux.
+
+```javascript
+let geoModel = require('./models/geo'),
+    btn      = document.getElementById('geoTrigger'),
+    output   = document.getElementById('geoOutput');
 
 // trigger a model action when the button is clicked
-btn.addEventListener('click', () => geo.actions.getLocation());
+btn.addEventListener('click', () => geoModel.actions.getLocation());
 
 // listen for changes to the location
-geo.subscribe(geo.selectors.location, loc => {
+geoModel.subscribe(geoModel.selectors.location, loc => {
     // do something with the new data. e.g.:
     output.innerHTML = JSON.stringify(loc);
 });
 
 // listen for changes to the "waiting" flag, so we can put up a spinner
-geo.subscribe(geo.selectors.waiting, waiting => {
+geoModel.subscribe(geoModel.selectors.waiting, waiting => {
     // do something with the new data. e.g.:
     console.log('waiting for location data:', !!waiting);
 });
-
 ```
 
 # Magic triggers
@@ -528,12 +488,12 @@ not a stack size.
 To request this functionality on your model, add it to an `options` object:
 
 ```javascript
-module.exports = reduxUtils.modelBuilder({
+module.exports = reduxModelUtils.modelBuilder({
 
     name: 'geo',
     options: {
         waitable: true  // <= that's it
-    }
+    },
     reducer,
     actions,
     selectors
@@ -589,7 +549,7 @@ actions and observables is left as an exercise for the reader.
 // load the plugin. you might use 'import', if you're into that kind of thing
 let reduxUndo = require('redux-undo');
 
-module.exports = reduxUtils.modelBuilder({
+module.exports = reduxModelUtils.modelBuilder({
     name: 'todos',
     options: {
         undoable: {
@@ -614,46 +574,19 @@ This library was designed to make redux more usable in all your apps, whether or
 not they use React. If you do use React, here's what you need to do.
 
 First, you must import and set up the [react-redux](https://github.com/rackt/react-redux/)
-library. Then, in your model:
-
-```javascript
-module.exports = reduxUtils.modelBuilder({
-    name: 'todos',
-    options: {
-        react: {}   // <= yes, an empty object
-    },
-    reducer,
-    actions,
-    selectors
-});
-```
-
-The empty object on `options.react` is a trigger to install the functionality described
-next. It's an object rather than a boolean to allow for expansion in the future.
-
-When you request React features in your model, you will get a new selector map
-called `reactSelectors`. You pass this map to the `connect()` function provided
-by `react-redux`.
-
-Note that in order to use this feature, your selectors must be functions rather than
-strings.
-
-In addition, your model will be given a new method `newID()`, which you can use to
-assign a unique ID to your model elements. Do not persist this ID to your database,
-as it creates IDs that are not guaranteed to be globally unique. If you need a true
-guid, or if you prefer to generates IDs another way, feel free to ignore this method.
+library. Your model will get a new selector map called `reactSelectors`. You pass this map 
+to the `connect()` function provided by `react-redux`.
 
 Here's a fuller example:
 
 ```javascript
 // YOUR MODEL.js
 //
-export var TodoModel = reduxUtils.modelBuilder({
+export let todoModel = reduxModelUtils.modelBuilder({
     name,
     reducer,
     actions,
-    selectors,
-    options: {react:{}}
+    selectors
 });
 ```
 ```javascript
@@ -661,7 +594,7 @@ export var TodoModel = reduxUtils.modelBuilder({
 //
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {TodoModel} from './todo-model.js';
+import {todoModel} from './models/todo.js';
 
 // do not export your component
 class TodoList extends Component {
@@ -670,31 +603,49 @@ class TodoList extends Component {
 
     // you can call your model's actions inside event handlers 
     addNote() {
-        TodoModel.actions.add('OMG duuuuude');
+        todoModel.actions.add('Build an app');
+    }
+    
+    // your component will get props that match your model's selectors
+    render() {
+        let {todos} = this.props;
+        // ... etc
     }
 }
 
 // export the result of the connect function, provided by react-redux
 export default connect(
-    TodoModel.reactSelectors    // <= this selector map is created for you
+    todoModel.reactSelectors    // <= this selector map is created for you
 )(TodoList);
 
 // you can use the decorator form instead if you prefer:
-// @connect(TodoModel.reactSelectors) ...
+// @connect(todoModel.reactSelectors) ...
 ```
 
 That's it. To recap:
 
-* Build your selector map using functions (no strings, sorry!)
-* Add `options: { react: {} }` to your model
-* Use your model's new `reactSelectors` object in the `connect()` function of react-redux.
+* Build your selector map to include anything you need as a prop 
+* Use your model's `reactSelectors` object (which is created for you) in the `connect()` function of react-redux
 
-Note that we didn't mention the `subscribe` function. When using React and `react-redux`,
-your entire state is sent to your component as props, so you don't need to subscribe.
-However, you can still use `subscribe` in other components as a way to keep track
-of changes to your model.
+### One component, many models
 
-Typically, `subscribe` is used in non-React-based applications.
+If you have props that you need from more than one model, you can combine them with `mergeReactSelectors`:
+
+```javascript
+import React, {Component}    from 'react';
+import {connect}             from 'react-redux';
+import {mergeReactSelectors} from 'redux-model-utils';
+
+// here we import any models whose props we need
+import {todoModel}           from './models/todo.js';
+import {uiModel}             from './models/ui.js';
+
+class TodoList extends Component { /* ... */ }
+
+export default connect(
+    mergeReactSelectors(todoModel, uiModel)     // pass in all the models you need
+)(TodoList);
+```
 
 # Using an actionMap
 
@@ -703,9 +654,9 @@ reducer which is only designed to respond to that action. Here again is the exam
 from earlier:
 
 ```javascript
-var actionMap = {
+let actionMap = {
     addTodo: {
-        code:   'TODO_ADD',
+        code:   'add',
         params: ['text'],           // parameters for the action creator
         reducer(state, action) {    // each reducer handles only a single action
             state.todos = [...state.todos, action.text];
@@ -713,7 +664,7 @@ var actionMap = {
         }
     },
     removeTodo: {
-        code:   'TODO_REMOVE',
+        code:   'remove',
         params: ['index'],
         reducer(state, action) {
             state.todos = [
@@ -726,22 +677,25 @@ var actionMap = {
 };
 ```
 
-The action map has one key for each action. In this case, the parser will unpack your action map
-and create two keys in the `actions` object: `addTodo` and `removeTodo`. 
+Each key in your action map is converted into an action. In this example, the parser will unpack
+your action map and create two keys in the `actions` object: `addTodo` and `removeTodo`.
 
-Each key (i.e., each action) must provide a `code` with a globally-unique value (probably a 
-string). It must also provide a reducer function for responding to that action. You can also
-provide an array of `params` for the action creator. If no params are needed, you can omit this property.
+Each key must provide a `code` with a module-unique value.
+It must also provide a reducer function for responding to that action. You can optionally
+provide `params`, which is an array of parameter names passed to the action creator.
+If no params are needed, you can omit this property.
 If only a single param is needed, you can use a string rather than an array of strings.
 
-If you use an action map, you should _not_ attach an `actions` object or a `reducer`
-function to your model. These will be created for you.
+When you use an action map, you should _not_ attach an `actions` object or a `reducer`
+function to your model. These will be created for you. Therefore, you can't mix an
+action map with any other actions on the same model.
 
-Because you do not provide a master reducer, you must instead provide a fully-specified
-`initialState` object.
+Because you do not provide a master reducer, you also don't have the opportunity to
+provide a default initial state. So you must instead provide a fully-specified
+`initialState` object on the model.
 
 ```javascript
-module.exports = reduxUtils.modelBuilder({
+module.exports = reduxModelUtils.modelBuilder({
 
     name: 'todos',
     selectors,      // not shown in this example
@@ -758,29 +712,28 @@ This is created for you.
 model.actions.removeTodo(4);
 ```
 
-To build an asynchronous action using an action map, include a key `async`. Params are again
-optional. No need to provide `code` or `reducer`.
+To build an asynchronous action using an action map, include a function key `async`. Params are handled
+the same way (i.e., an optional string or array of strings). However, asynchronous actions
+should not be given a `code` or `reducer`. Your `async` function can return a promise for chaining.
 
 ```javascript
-var actionMap = {
+let actionMap = {
     save: {
         params: 'recordID',
         async(params) {
-            // do asynchronous things. you can call other
-            // actions, as long as you keep a reference to
-            // the model around. return a promise for chaining
-            model.wait();
-            return api.save(params.recordID);
+            // do asynchronous things
+            model.actions.wait();
+            return api.save(params.recordID)
                 .then(() => model.stopWaiting());
         }
     },
     // example of an async action with no params: a one-second timer-promise
     timer1000: {
-        async: () => new Promise(resolve => setTimeout(resolve, 1000));
+        async: () => new Promise(resolve => setTimeout(resolve, 1000))
     }
 };
 // keep a reference to the constructed model, so we can call its actions above
-var model = module.exports = reduxUtils.modelBuilder( /* ... */ );
+let model = module.exports = reduxModelUtils.modelBuilder( /* ... */ );
 
 // ... then later ...
 model.actions.save(44).then(closeForm);
@@ -805,7 +758,7 @@ You must run your model through this utility before exporting it. It has no
 options.
 
 ```javascript
-module.exports = reduxUtils.modelBuilder({
+module.exports = reduxModelUtils.modelBuilder({
     name: "reddit",
     reducer,
     actions,
@@ -822,8 +775,8 @@ dispatch, just don't use this tool.
 
 ```javascript
 let actions = {
-    incr:  reduxUtils.makeActionCreator('CTR_INCR', 'value'),
-    decr:  reduxUtils.makeActionCreator('CTR_DECR', 'value'),
+    incr:  reduxModelUtils.makeActionCreator('CTR_INCR', 'value'),
+    decr:  reduxModelUtils.makeActionCreator('CTR_DECR', 'value'),
 };
 ```
 
@@ -845,14 +798,14 @@ Here's a common pattern for running an AJAX query:
 let privateActions = {
     
     // this action might invalidate the cache
-    startQuery: reduxUtils.makeActionCreator('QU_START'),
+    startQuery: reduxModelUtils.makeActionCreator('QU_START'),
     
     // this will store the results in your model when the query is finished
-    endQuery:   reduxUtils.makeActionCreator('QU_END', 'results')
+    endQuery:   reduxModelUtils.makeActionCreator('QU_END', 'results')
 },
 let actions = {
     // make an async action that takes one argument ('username').
-    query: reduxUtils.makeAsyncAction(args => {
+    query: reduxModelUtils.makeAsyncAction(args => {
 
         // run a synchronous action, perhaps to invalidate the cache.
         // you might also call 'actions.wait()' if your model is a waitable
@@ -872,33 +825,6 @@ let actions = {
 // ... later ...
 model.actions.query('harry').then(showProfilePage);
 ```
-
-##### makeCodes(codes)
-
-To keep your models dry, you will typically assign action codes to constants. That
-way you can use the same code in an action creator and in your reducer.
-
-This is a common pattern for setting up action codes:
-
-```javascript
-let actionCodes = {
-    CTR_INCR: 'CTR_INCR',
-    CTR_DECR: 'CTR_DECR'
-}
-```
-
-The `makeCodes()` utility lets you skip half of the typing by using an array instead.
-
-```javascript
-let actionCodes = makeCodes([
-    'CTR_INCR',
-    'CTR_DECR'
-]);
-```
-
-The result is the same: an object map of keys and strings. The benefit of using this
-utility is usually minimal, but may be useful when building longer lists. The 
-downside is that your IDE may provide less assistance with autocompletion.
 
 ##### clone(obj)
 
@@ -950,7 +876,7 @@ let store = {
     }
 };
 
-let newStore = reduxUtils.cloneAndAssign(store, 'preferences.fontSize', 'small')
+let newStore = reduxModelUtils.cloneAndAssign(store, 'preferences.fontSize', 'small')
 // => {userID: 0, preferences: {colorScheme: 'dark', fontSize: 'small'}}
 ```
 
@@ -959,7 +885,7 @@ in your reducer for almost every action. Here is a more complete example that ha
 and an array of objects in the store:
 
 ```javascript
-var reduxUtils = require('redux-utils');
+let reduxModelUtils = require('redux-model-utils');
 
 const
     initialState = {
@@ -975,8 +901,8 @@ const
         SET_LIST_NAME: 'SET_LIST_NAME'
     },
     actions = {
-        addTodo:     reduxUtils.makeActionCreator(actionCodes.ADD_TODO, 'text'),
-        setListName: reduxUtils.makeActionCreator(actionCodes.SET_LIST_NAME, 'text')
+        addTodo:     reduxModelUtils.makeActionCreator(actionCodes.ADD_TODO, 'text'),
+        setListName: reduxModelUtils.makeActionCreator(actionCodes.SET_LIST_NAME, 'text')
     };
 
 function reducer(state = initialState, action = {}) {
@@ -988,7 +914,7 @@ function reducer(state = initialState, action = {}) {
         // aren't useful here; we have to directly manipulate the state object.
         //
         case actionCodes.ADD_TODO:
-            state = reduxUtils.clone(state);
+            state = reduxModelUtils.clone(state);
             state.todos.push({
                 text: action.text,
                 completed: false
@@ -998,12 +924,12 @@ function reducer(state = initialState, action = {}) {
         // for scalar properties, we use 'cloneAndAssign()' with a selector string.
         // we like one-liners.
         case actionCodes.SET_LIST_NAME:
-            return reduxUtils.cloneAndAssign(state, selectors.listName, action.text);
+            return reduxModelUtils.cloneAndAssign(state, selectors.listName, action.text);
     }
     return state;
 }
 
-module.exports = reduxUtils.modelBuilder({
+module.exports = reduxModelUtils.modelBuilder({
     name: 'todos',
     reducer,
     actions,
@@ -1037,9 +963,9 @@ syntax (e.g., `import` instead of `require`), and you may have additional middle
 to install, but you may not omit anything in the setup example here. 
 
 ```javascript
-var redux      = require('redux'),
-    thunk      = require('redux-thunk'),
-    reduxUtils = require('redux-utils'),
+let redux           = require('redux'),
+    thunk           = require('redux-thunk'),
+    reduxModelUtils = require('redux-model-utils'),
 
     models = [
         require('./models/appdata'),
@@ -1050,14 +976,14 @@ var redux      = require('redux'),
     createStoreWithMiddleware = redux.applyMiddleware(thunk)(redux.createStore),
 
     // prepare an object for combineReducers
-    allReducers = reduxUtils.buildReducerMap(models),
+    allReducers = reduxModelUtils.buildReducerMap(models),
 
     // unify all models into a single reducer
     masterReducer = redux.combineReducers(allReducers),
 
     masterStore = createStoreWithMiddleware(masterReducer);
 
-reduxUtils.setStore(masterStore);
+reduxModelUtils.setStore(masterStore);
 module.exports = masterStore;
 ```
 
@@ -1109,7 +1035,7 @@ Here's some code from a view. It's not complete, but shows the typical subscript
 pattern.
 
 ```javascript
-var todos = require('./models/todos');
+let todos = require('./models/todos');
 
 todos.subscribe(todos.selectors.todos, todoList => {
     // do something with the new data
