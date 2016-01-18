@@ -46,7 +46,7 @@ describe('WAITABLE module:', () => {
 
     it('properly runs the wait action, setting the "waiting" flag', () => {
 
-        var mockStore = store.resetStore(model.reducer, state, 1);
+        var mockStore = store.resetStore(model, state, 1);
 
         model.actions.wait();
         expect(mockStore.getState().waiting).toBeTruthy();
@@ -54,7 +54,7 @@ describe('WAITABLE module:', () => {
 
     it('properly runs the stopWaiting action, UNsetting the "waiting" flag', () => {
 
-        var mockStore = store.resetStore(model.reducer, state, 2);
+        var mockStore = store.resetStore(model, state, 2);
 
         model.actions.wait();
         expect(mockStore.getState().waiting).toBeTruthy();
@@ -64,7 +64,7 @@ describe('WAITABLE module:', () => {
 
     it('lets other actions pass through to the original reducer', () => {
 
-        var mockStore = store.resetStore(model.reducer, state, 2),
+        var mockStore = store.resetStore(model, state, 2),
             setColor = RU.makeActionCreator('setColor', 'col'),
             finalState;
 

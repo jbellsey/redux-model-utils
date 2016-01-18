@@ -11,27 +11,39 @@ describe('SUBSCRIBE module:', () => {
                     size: 'large'
                 }
             },
-            state;
+            selectors = {
+                color: 'prefs.color',
+                size: 'prefs.size'
+            },
+            reducer = (state = initial, action = {}) => {
 
-        beforeEach(() => state = RU.clone(initial));
+                switch (action.type) {
+                    case 'setColor':
+                        return RU.cloneAndAssign(state, 'prefs.color', action.col);
 
-        function reducer(state = initial, action = {}) {
+                    default:
+                        return state;
+                }
+            },
+            modelSeed = {
+                name: 'subscribe-model',
+                actions: {},
+                selectors: selectors,
+                reducer
+            },
+            state, model;
 
-            switch (action.type) {
-                case 'setColor':
-                    return RU.cloneAndAssign(state, 'prefs.color', action.col);
-
-                default:
-                    return state;
-            }
-        }
+        beforeEach(() => {
+            state = RU.clone(initial);
+            model = RU.modelBuilder(RU.clone(modelSeed));
+        });
 
     //-----------
 
     it('runs a basic reducer properly', () => {
 
         var expected  = [{ type:'setColor', col:'green' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('green');
                 expect(state.prefs.size).toBe('large');
@@ -45,7 +57,7 @@ describe('SUBSCRIBE module:', () => {
     it('runs a raw subscriber properly (not using our wrapper)', () => {
 
         var expected  = [{ type:'setColor', col:'yellow' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('yellow');
             }),
@@ -60,7 +72,7 @@ describe('SUBSCRIBE module:', () => {
     it('runs our custom subscriber properly', () => {
 
         var expected  = [{ type:'setColor', col:'gray' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('gray');
             }),
@@ -74,7 +86,7 @@ describe('SUBSCRIBE module:', () => {
     it('runs properly with a function selector', () => {
 
         var expected  = [{ type:'setColor', col:'teal' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('teal');
             }),
@@ -89,7 +101,7 @@ describe('SUBSCRIBE module:', () => {
     it('respects "noInit" flag', () => {
 
         var expected  = [{ type:'setColor', col:'purple' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('purple');
             }),
@@ -103,7 +115,7 @@ describe('SUBSCRIBE module:', () => {
     it('receives the correct value', () => {
 
         var expected  = [{ type:'setColor', col:'mint' }],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('mint');
             });
@@ -117,7 +129,7 @@ describe('SUBSCRIBE module:', () => {
 
         var oneAction = { type:'setColor', col:'pink' },
             expected  = [oneAction, oneAction, oneAction],
-            mockStore = store.resetStore(reducer, state, expected, () => {
+            mockStore = store.resetStore(model, state, expected, () => {
                 var state = mockStore.getState();
                 expect(state.prefs.color).toBe('pink');
             }),

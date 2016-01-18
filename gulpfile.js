@@ -13,7 +13,7 @@ var packages = {
         outputFile:   'spec.js'
     },
     runOne: {
-        inputFiles:   './spec/model.js',
+        inputFiles:   './spec/waitable.js',
         outputFolder: './spec/',
         outputFile:   'model-es5.js'
     }
@@ -45,7 +45,7 @@ gulp.task('browserify-tests', () => browserifier('test'));
 gulp.task('browserify', () => browserifier('code'));
 gulp.task('default', () => browserifier('code'));
 
-gulp.task('spec', ['browserify-tests'], () => {
+gulp.task('spec', ['browserify', 'browserify-tests'], () => {
 
     var jasmine = require('gulp-jasmine'),
         testFiles = './dist/spec.js',

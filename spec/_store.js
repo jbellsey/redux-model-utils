@@ -17,7 +17,7 @@ var redux       = require('redux'),
                 have all been called. for integer expectedActions, the function
                 is invoked as soon as the indicated action count is reached.
 */
-function mockStore(reducer, state, expectedActions, onLastAction) {
+function mockStore(model, state, expectedActions, onLastAction) {
 
     var expectedActionsIsArray = Array.isArray(expectedActions);
     if (!expectedActionsIsArray && typeof expectedActions !== 'number') {
@@ -31,9 +31,17 @@ function mockStore(reducer, state, expectedActions, onLastAction) {
         var listeners = [];
 
         function _getState() {
-            return typeof state === 'function' ?
-                state() :
-                state;
+            let stateData = typeof state === 'function' ?
+                                state() :
+                                state;
+
+            // TODO: the mock store doesn't properly scope model data yet
+            //if (model && model.name) {
+            //    let fullState = {};
+            //    fullState[model.name] = stateData;
+            //    return fullState;
+            //}
+            return stateData;
         }
         function _setState(s) {
             if (typeof state !== 'function')
@@ -61,8 +69,8 @@ function mockStore(reducer, state, expectedActions, onLastAction) {
                 }
 
                 // simple single-reducer mock
-                if (typeof reducer === 'function')
-                    _setState(reducer(_getState(), action));
+                if (model && model.reducer)
+                    _setState(model.reducer(_getState(), action));
 
                 if (onLastAction && _isLastAction()) {
                     onLastAction();
@@ -84,11 +92,24 @@ function mockStore(reducer, state, expectedActions, onLastAction) {
         }
     }
 
-    const mockStoreWithMiddleware = redux.applyMiddleware(
-        ...middlewares
-    )(mockStoreWithoutMiddleware);
+    var createStoreWithMiddleware = redux.applyMiddleware(...middlewares)(mockStoreWithoutMiddleware);
 
-    return mockStoreWithMiddleware();
+    if (model) {
+
+        // prepare an object for combineReducers. this is of the form {modelName: modelReducer, ...},
+        // because that's what we need for combineReducers()
+        //
+        var allReducers = RU.buildReducerMap([model]);
+
+        // unify all models into a single reducer
+        var masterReducer = redux.combineReducers(allReducers);
+
+        return createStoreWithMiddleware(masterReducer);
+    }
+    else {
+        // a null model is legit; it means no reducer is provided
+        return createStoreWithMiddleware();
+    }
 }
 
 function resetStore(...args) {
