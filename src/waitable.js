@@ -1,7 +1,9 @@
-var deepAssign = require('deep-assign'),
+let deepAssign = require('deep-assign'),
     object     = require('./object'),
     actions    = require('./actions'),
     counter    = 1;
+
+let waitingSelector = state => state.waiting;
 
 function makeWaitable(model) {
 
@@ -17,7 +19,6 @@ function makeWaitable(model) {
     //----- SELECTORS
     // the waitable flag is merged into the model's store. it's public,
     // which means clients can subscribe to changes
-    let waitingSelector = state => state.waiting;
     if (typeof model.selectors !== 'object')
         model.selectors = {};
     model.selectors.waiting = waitingSelector;

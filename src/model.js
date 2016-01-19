@@ -25,7 +25,7 @@ function buildAccessors(model) {
     model.data = data;
 
     Object.defineProperty(model, 'allData', {
-        get: () => store.getStore().getState()[model.name]
+        get: () => object.clone(store.getStore().getState()[model.name])
     });
 }
 
@@ -125,7 +125,7 @@ function mapSelectors(model) {
 
 function find(arr, predicate) {
 
-    var value, i;
+    let value, i;
     for (i = 0; i < arr.length; ++i) {
         if (predicate(value = arr[i]))
             return value;
@@ -168,7 +168,7 @@ function parseActionMap(model) {
     model.actions = listOfActions;
     model.reducer = (state = model.initialState, action = {}) => {
 
-        var reducer = find(listOfReducers, reducer => reducer.code === action.type);
+        let reducer = find(listOfReducers, reducer => reducer.code === action.type);
         if (reducer)
             state = reducer.fnc(state, action);
         return state;

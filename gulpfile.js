@@ -12,6 +12,7 @@ var packages = {
         outputFolder: './dist/',
         outputFile:   'spec.js'
     },
+    // used just to peek at a single file's compiled output
     runOne: {
         inputFiles:   './spec/waitable.js',
         outputFolder: './spec/',
@@ -41,9 +42,9 @@ var browserifier = pkg => {
 };
 
 gulp.task('browserify-runone', () => browserifier('runOne'));
-gulp.task('browserify-tests', () => browserifier('test'));
-gulp.task('browserify', () => browserifier('code'));
-gulp.task('default', () => browserifier('code'));
+gulp.task('browserify-tests',  () => browserifier('test'));
+gulp.task('browserify',        () => browserifier('code'));
+gulp.task('default',           () => browserifier('code'));
 
 gulp.task('spec', ['browserify', 'browserify-tests'], () => {
 

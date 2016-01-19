@@ -3,15 +3,15 @@ var clone      = require('clone'),
 
 /*
     two ways to use:
-    READ ("peek"):  _deepPeekAndPoke(obj, "dot.notation.string")
-    WRITE ("poke"): _deepPeekAndPoke(obj, "dot.notation.string", newValue)
+    READ ("peek"):  deepPeekAndPoke(obj, "dot.notation.string")
+    WRITE ("poke"): deepPeekAndPoke(obj, "dot.notation.string", newValue)
 
     note: the WRITE signature is NOT PURE. it modifies {obj} in place.
     you should use the ASSIGN tool for writing, or even better, cloneAndAssign
     for purity.
 */
 
-function _deepPeekAndPoke(obj, selectorString, val) {
+function deepPeekAndPoke(obj, selectorString, val) {
 
     let props = selectorString.split('.'),
         final = props.pop(),
@@ -33,7 +33,7 @@ function _deepPeekAndPoke(obj, selectorString, val) {
 
 function lookup(obj, selector) {
     if (typeof selector === 'string')
-        return _deepPeekAndPoke(obj, selector);
+        return deepPeekAndPoke(obj, selector);
     else if (typeof selector === 'function')
         return selector(obj);
 }
@@ -42,7 +42,7 @@ function lookup(obj, selector) {
 // it's destructive though; see below
 //
 function assign(obj, selectorString, val) {
-    _deepPeekAndPoke(obj, selectorString, val);
+    deepPeekAndPoke(obj, selectorString, val);
     return obj;
 }
 
@@ -51,7 +51,7 @@ function assign(obj, selectorString, val) {
 function cloneAndAssign(obj, selectorString, val) {
     let result = clone(obj);       // makes with a full, deep copy of the source object
     if (typeof selectorString === 'function')
-        throw new Error('redux-utils: cloneAndAssign does not accept a function selector; strings only');
+        throw new Error('redux-model-utils: cloneAndAssign does not accept a function selector; strings only');
     assign(result, selectorString, val);
     return result;
 }

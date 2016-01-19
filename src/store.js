@@ -26,7 +26,7 @@ var store;
     for how stores are now one level deeper.
 */
 function buildReducerMap(modelArray) {
-    return modelArray.reduce((map, model) => {
+    return (modelArray || []).reduce((map, model) => {
         map[model.name] = model.reducer;
         return map;
     }, {});
