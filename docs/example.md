@@ -18,22 +18,23 @@ In this example, we'll use an action map. The view code will be shown next.
 let   reduxModelUtils  = require('redux-model-utils'),
       model;    // set below
 
-const // prepare an empty store. you're doing this already.
+const
+    // prepare an empty store. you're doing this already.
     initialState = {
         location: {}
     },
-    // dot-notation strings to look at properties of our model, as described above.
+    // dot-notation strings to look at properties of our model.
     // in our case, the model is only one level deep, so there are no dots :)
     selectors = {
         location: 'location'    // could also have been a function: state => state.location
     },
-    // the action map is internally converted into an "actions" object, as described above.
+    // the action map is internally converted into an "actions" object.
     // two additional public actions (wait and stopWaiting) are installed because
-    // we set the "waitable" option on the export statement below.
+    // we set the "waitable" option below.
     actionMap = {
 
         // this action is semi-private. to create a truly private action you cannot use
-        // an action map. instead, use makeActionCreator
+        // an action map. instead, use makeActionCreator. the [actions.md] doc explains this.
         _setLocation: {
             code:    'set',      // code doesn't need to be globally unique; just unique within this module
             params:  'location', // only one param for the action creator
@@ -119,6 +120,9 @@ let MyGeoComponent = React.createClass({
     },
 
     render() {
+        // the props are created by the connect() call below.
+        // they are mapped from the selectors above. (remember that "waiting"
+        // is installed by our magic trigger)
         let spinner = this.props.waiting ? <Spinner /> : null,
             output  = <LocationDisplay location={this.props.location} />;
 
@@ -136,7 +140,8 @@ let MyGeoComponent = React.createClass({
 export default connect(geoModel.reactSelectors)(MyGeoComponent);
 ```
 
-A similar view in vanilla. In this case, we don't even have to import Redux.
+A similar view in vanilla. In this case, we don't even have to import
+any Redux code.
 
 ```javascript
 let geoModel = require('./models/geo'),
@@ -180,7 +185,7 @@ let redux           = require('redux'),
     thunk           = require('redux-thunk'),
     reduxModelUtils = require('redux-model-utils'),
 
-    // build an array with all of your models
+    // THIS IS NEW: build an array with all of your models
     models = [
         require('./models/appdata'),
         require('./models/todos')
@@ -190,14 +195,16 @@ let redux           = require('redux'),
     // standard. add other middlewares here
     createStoreWithMiddleware = redux.applyMiddleware(thunk)(redux.createStore),
 
-    // prepare an object for combineReducers
+    // THIS IS NEW: prepare an object for combineReducers
     allReducers = reduxModelUtils.buildReducerMap(models),
 
+    // THIS IS REQUIRED (but you might already be doing it):
     // unify all models into a single reducer
     masterReducer = redux.combineReducers(allReducers),
 
     masterStore = createStoreWithMiddleware(masterReducer);
 
+// THIS IS NEW:
 reduxModelUtils.setStore(masterStore);
 module.exports = masterStore;
 ```

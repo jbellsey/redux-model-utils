@@ -164,7 +164,7 @@ You can't build an action-creator which is only available within your module.
 If you need to make an action-creator for private use, you'll need to use
 the technique below, which will be familiar to any Redux programmer.
 
-See the async example below for a use-case.
+See the async example in the [API docs](api-model.md) for a use-case.
 
 # Normal action-creators
 
@@ -233,11 +233,12 @@ module.exports = reduxModelUtils.modelBuilder({
 });
 ```
 
-This looks more like standard Redux. We only added only convenience function
+This looks more like standard Redux. We only added one convenience function
 (`makeActionCreator`), which is something most Redux applications do anyway.
 
 The action codes can now be shared with other reducers, since they aren't
-private or managed internally by the library.
+private or managed internally by the library. Simply move the definition of
+the codes to another module so they can be imported wherever you need them.
 
 ### Asynchronous actions
 
