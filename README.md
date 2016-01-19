@@ -11,7 +11,7 @@ works very well whether or not you use React for rendering.
 To use this library, you'll need to build your models using the patterns described below. These
 patterns, in effect, ARE the library.
 
-Before jumping into the [full documentation](docs/index.md),
+Before jumping into the [full documentation](docs),
 let's take a look at what your code will look like when
 you use this library.
 
