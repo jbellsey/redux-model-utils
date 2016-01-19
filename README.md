@@ -126,6 +126,7 @@ In addition to `clone()`, which does a deep copy of an object, you
 also get property-management tools like `lookup()`, `assign()` and `cloneAndAssign()`.
 These are described below.
 
-# Learn more!
+# Learn more
 
-• [Read a full example](docs/example.md)
+* [Read a full example](docs/example.md)
+* [Browse the docs](docs)
