@@ -51,9 +51,9 @@ Here's some code from a vanilla JavaScript view. It's not complete,
 but shows the typical subscription pattern.
 
 ```javascript
-let todos = require('./models/todos');
+let todoModel = require('./models/todos');
 
-let unsub = todos.subscribe(todos.selectors.todos, todoList => {
+let unsub = todoModel.subscribe(todoModel.selectors.todos, todoList => {
     // do something with the new data
     console.log('todos changed', todoList);
 });

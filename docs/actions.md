@@ -164,7 +164,8 @@ You can't build an action-creator which is only available within your module.
 If you need to make an action-creator for private use, you'll need to use
 the technique below, which will be familiar to any Redux programmer.
 
-See the async example in the [API docs](api-model.md) for a use-case.
+See the async example in the [API docs](api-model.md) for a use-case
+and a model which has both public and private action-creators.
 
 # Normal action-creators
 
@@ -192,8 +193,8 @@ const
     // these codes aren't exported in this example. but they can easily
     // be moved to a separate module (e.g., "actionCodes.js") for sharing
     actionCodes = {
-        TODO_ADD:      'TODO_ADD',
-        TODO_REMOVE:   'TODO_REMOVE'
+        TODO_ADD:    'TODO_ADD',
+        TODO_REMOVE: 'TODO_REMOVE'
     },
     // here we build the public action-creators, using the action codes above.
     // the parameters for the action-creator are described here as well

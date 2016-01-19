@@ -41,7 +41,7 @@ let functionSelectors = {
 You can use either. However, string selectors have the added advantage
 that they can be used for *writing* to your model, as well as *reading* from it.
 With function selectors, you can only read. Have a look at the object-related
-utility functions below (e.g., `cloneAndAssign`).
+utility functions (e.g., `cloneAndAssign`).
 
 Here's an example using selector strings:
 
