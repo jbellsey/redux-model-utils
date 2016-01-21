@@ -192,6 +192,10 @@ function modelBuilder(model) {
     if (model.actionMap && model.initialState)
         parseActionMap(model);
 
+    // TODO: make ez-selectors
+    // i.e., if no selectors are provided, map the top level of the initialState object.
+    // so this will work for action maps only
+
     //----------
     // MAGIC code
     //
@@ -212,12 +216,13 @@ function modelBuilder(model) {
         //
         if (typeof model.options.undoable === 'object')
             undoable.makeUndoable(model);
-
-        // for usage of this library with react, prepare a selector map for use with
-        // the connect() function provided by react-redux. does not affect non-react apps.
-        //
-        react.reactify(model);
     }
+
+    //----------
+    // for usage of this library with react, prepare a selector map for use with
+    // the connect() function provided by react-redux. does not affect non-react apps.
+    //
+    react.reactify(model);
 
     //----------
     // nasty, overwritey, we-know-better-than-you stuff. dragons, and all that.

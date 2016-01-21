@@ -12,4 +12,4 @@
 * [Config & setup tools](api-config.md)
 * [Model-building tools](api-model.md)
 * [View-related tools](api-view.md)
-* [Object-management utilities](object.md)
+* [Object-management utilities](api-object.md)

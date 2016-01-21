@@ -3,6 +3,7 @@ var components = [
         require('./store'),
         require('./object'),
         require('./model'),
+        require('./react'),
         require('./subscribe'),
         require('./waitable'),
         require('./undoable')
