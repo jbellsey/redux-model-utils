@@ -65,12 +65,13 @@ That's it. To recap:
 
 * Build your selector map to include anything you need as a prop
 * Use your model's `reactSelectors` object (which is created for you) in the `connect()` function of react-redux
+* There should be no need to write your own `mapStateToProps` or `mapDispatchToProps` functions for `connect`
 
 ### Custom selectors
 
-There's no reason you can't do fancy footwork in your selector functions.
+You can do as much fancy footwork in your selector functions as you like.
 As long as it runs synchronously, a selector function can process state
-however you like.
+into the sausage of your dreams.
 
 ```javascript
 let selectors = {

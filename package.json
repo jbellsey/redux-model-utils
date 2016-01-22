@@ -1,8 +1,8 @@
 {
   "name": "redux-model-utils",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Utilities and patterns for models using redux.js",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "gulp spec"
   },

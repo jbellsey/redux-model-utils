@@ -46,6 +46,8 @@ No more `switch` statements in big reducers that handle multiple actions.
 No need for public-facing action codes.
 No need to do your own `dispatch`.
 
+This is true encapsulation for your models.
+
 While action maps are sweet, you don't have to use them.
 You can use another utility function `makeActionCreator`,
 which is straight from the Redux docs.
@@ -58,6 +60,36 @@ addTodo('Sell car');    // dispatch is called for you
 There are also tools for async actions. Read the
 [full docs on actions](docs/actions.md).
 
+### Easy connection to React components
+
+If you're using this library in a React app, you're in luck.
+No need to write `mapStateToProps` or `mapDispatchToProps`.
+It's all done for you when you connect a model to a component.
+
+```javascript
+// selectors are described in detail later. briefly: they
+// are roadmaps that allow a consumer to retrieve
+// a property in the state. they also map to props when
+// you connect a model to a component.
+//
+let selectors = {
+    todos:    state => state.todos,
+    listName: state => state.listName
+};
+
+// ... then later, in your connected (smart) component ...
+//
+class TodoList extends Component {
+    render() {
+        // your component will get props that match your model's selectors
+        let {todos, listName} = this.props;
+        // ... etc
+    }
+}
+```
+
+Details in the [React docs](docs/react.md).
+
 ### Direct read-only access to the model state
 
 Here's a snippet from a model used for non-UI data,
@@ -69,11 +101,8 @@ let initialState = {
         token:     null,
         pollTimer: null
     },
-    // selectors are described in detail later. briefly: they
-    // are  roadmaps that allow a consumer to retrieve
-    // a property in the state. they are also converted into
-    // read-only properties on the model's "data" object, as
-    // shown a few lines down
+    // selectors are also converted into read-only properties
+    // on the model's "data" object, as shown a few lines down
     selectors = {
         token:     state => state.token,
         pollTimer: state => state.pollTimer
@@ -87,7 +116,7 @@ This means you don't need to `connect` every model to every component.
 Peek into any model you like, and you'll get the latest values from the
 master Redux store.
 
-*Caveat*: This is convenient, but not often a best practice. In React apps,
+*Caveat*: This is convenient, but not always a best practice. In React apps,
 you'll typically use `mergeReactSelectors` if your views need to respond
 to changes across multiple models. And in non-React apps, you'll typically use
 `subscribe` to track changes. So use with caution.

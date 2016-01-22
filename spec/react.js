@@ -44,4 +44,6 @@ describe('REACT module:', () => {
         // of state in a selector function
         expect(connectedSelectors.custom).toBe('red~large');
     });
+
+    // TODO: test mergeReactSelectors
 });
