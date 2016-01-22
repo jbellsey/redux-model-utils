@@ -66,6 +66,21 @@ That's it. To recap:
 * Build your selector map to include anything you need as a prop
 * Use your model's `reactSelectors` object (which is created for you) in the `connect()` function of react-redux
 
+### Custom selectors
+
+There's no reason you can't do fancy footwork in your selector functions.
+As long as it runs synchronously, a selector function can process state
+however you like.
+
+```javascript
+let selectors = {
+    allTodos:     state => state.todos,
+    visibleTodos: state => state.todos.filter(todo => !!todo.visible)
+}
+```
+
+This will pass two array props to your component.
+
 ### One component, many models
 
 If your component needs props from more than one model, you can combine them with
