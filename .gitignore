@@ -5,3 +5,4 @@
 .idea_modules/
 node_modules/
 dist/
+!dist/index.js
