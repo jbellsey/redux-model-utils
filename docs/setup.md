@@ -9,7 +9,7 @@ These will be installed along with this library.
 To install:
 
 ```
-npm install --save jbellsey/redux-model-utils
+npm install --save redux-model-utils
 ```
 
 In addition, you must make the following changes or additions to your code:

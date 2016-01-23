@@ -58,3 +58,12 @@ gulp.task('spec', ['browserify', 'browserify-tests'], () => {
     return gulp.src(testFiles)
         .pipe(jasmine(opts));
 });
+
+gulp.task('build', () => {
+    var babel = require('gulp-babel');
+    return gulp.src('src/*.js')
+        .pipe(babel({
+            presets: ['es2015']
+        }))
+        .pipe(gulp.dest('dist'));
+});

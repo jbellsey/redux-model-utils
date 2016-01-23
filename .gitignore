@@ -4,5 +4,4 @@
 *.iws
 .idea_modules/
 node_modules/
-dist/
-!dist/index.js
+dist/spec.js

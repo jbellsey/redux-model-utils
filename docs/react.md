@@ -21,10 +21,27 @@ let selectors = {
     todos:    state => state.todos,
     listName: state => state.listName
 };
+let initialState = {
+    todos: [],
+    listName: ''
+};
+let actionMap = {
+    add: {
+        params: 'text',
+        reducer: (state, action) => {
+           state.todos = [...state.todos, action.text];
+           return state;
+        }
+    },
+    setListName: {
+        params: 'name',
+        reducer: (state, action) => reduxModelUtils.cloneAndAssign(state, selectors.listName, params.name)
+    }
+}
 export let todoModel = reduxModelUtils.modelBuilder({
-    name,
-    reducer,
-    actions,
+    name: 'todos',
+    actionMap,
+    initialState,
     selectors   // <= a new map "reactSelectors" will be created for you
 });
 ```

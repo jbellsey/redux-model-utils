@@ -1,6 +1,6 @@
 
 ```
-npm install --save jbellsey/redux-model-utils
+npm install --save redux-model-utils
 ```
 
 # Redux model utilities
@@ -26,7 +26,6 @@ bundles together everything needed for a single, public, executable action. Witn
 let actionMap = {
     // each key in the map is converted into an action-creator of the same name
     addTodo: {
-        code:   'TODO_ADD',         // private to this module. consumers don't see this
         params: ['text'],           // parameters for the action creator
         reducer(state, action) {    // atomic reducer for this one action
             state.todos = [...state.todos, action.text];

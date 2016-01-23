@@ -12,17 +12,17 @@ var components = [
 
 // shallow merge. all APIs are exposed at the top level
 //
-components.forEach(module => {
+components.forEach(oneModule => {
 
     // if a module has a "publicAPI" key, use that object for public access.
     // that just means that a module offers different functionality within
     // this library than it does to consumers.
     //
-    if (module.publicAPI)
-        module = module.publicAPI;
+    if (oneModule.publicAPI)
+        oneModule = oneModule.publicAPI;
 
-    Object.keys(module).forEach(key => {
-        output[key] = module[key];
+    Object.keys(oneModule).forEach(key => {
+        output[key] = oneModule[key];
     })
 });
 

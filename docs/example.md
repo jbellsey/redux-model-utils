@@ -36,7 +36,6 @@ const
         // this action is semi-private. to create a truly private action you cannot use
         // an action map. instead, use makeActionCreator. the [actions.md] doc explains this.
         _setLocation: {
-            code:    'set',      // code doesn't need to be globally unique; just unique within this module
             params:  'location', // only one param for the action creator
 
             // the reducer is atomic, only used for this one action, which makes it trivial.

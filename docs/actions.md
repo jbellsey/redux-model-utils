@@ -21,7 +21,6 @@ Here again is the example from earlier:
 ```javascript
 let actionMap = {
     addTodo: {
-        code:   'add',              // private to this module
         params: ['text'],           // parameters for the action creator
         reducer(state, action) {    // each reducer handles only a single action
             state.todos = [...state.todos, action.text];
@@ -29,7 +28,6 @@ let actionMap = {
         }
     },
     removeTodo: {
-        code:   'remove',
         params: ['index'],
         reducer(state, action) {
             state.todos = [
@@ -61,12 +59,7 @@ In this example, the parser will unpack
 your action definitions and create two keys in the `actions` object:
 `addTodo` and `removeTodo`.
 
-After parsing, the action map is not used. This means that action
-codes are fully private. More on that below.
-
-Each action definition must provide a `code` with a module-unique value.
-It does not need to be
-globally unique, but it must be unique among the model's other actions.
+After parsing, the action map is not used.
 
 You must also provide a reducer function for responding to that action.
 The reducer will be called only when the given action is processed. So
@@ -108,7 +101,7 @@ The action definition for an asynchronous action should include a `params`
 key, just as described above. It can be a string, or an array of strings,
 or you can omit it altogether if no parameters are needed.
 
-Asynchronous action definitions should not be given a `code` or `reducer`.
+Asynchronous action definitions should not be given a reducer.
 
 ```javascript
 let actionMap = {
@@ -137,21 +130,21 @@ model.actions.save(44).then(closeForm);
 model.actions.timer1000().then(smile);
 ```
 
-### More about private action codes
+### About private action codes
 
-Again, the action codes you use inside an action map are private. Internally
-they are modified before being dispatched to ensure that they are globally-unique.
-You should not write code that depends on our internal modification of your codes.
+The codes for actions built from an action map are private.
+You should not write code that depends on these internal action codes.
 
-Because codes are not shared, you cannot respond to actions outside of an
-action map. Other reducers cannot handle your actions.
+Because codes are not shared, other reducers cannot handle actions
+created by an action map.
 
-If your application needs to have multiple responses to a single action,
+If your application needs to have multiple reducers handle a single action,
 you have a few options.
 
 First, use the `subscribe` option. Instead of writing code inside
 a reducer, build a callback handler that watches a value in your model for
-changes.
+changes. When the model changes, your callback is invoked, and you
+can issue other actions.
 
 If that isn't an option, and you truly need public action codes that can
 be handled by multiple reducers, you can't use an action map. The next
