@@ -1,4 +1,4 @@
-var actions    = require('./actions');
+var actions = require('./actions');
 
 /*
      if provided, the action map must be in this format:
@@ -47,7 +47,7 @@ function parseActionMap(model) {
 
             // install the reducer
             listOfReducers.push({
-                      code,
+                code,
                 fnc:  actionDetails.reducer
             });
         }
@@ -57,9 +57,9 @@ function parseActionMap(model) {
     model.actions = listOfActions;
     model.reducer = (state = model.initialState, action = {}) => {
 
-        let reducer = find(listOfReducers, reducer => reducer.code === action.type);
-        if (reducer)
-            state = reducer.fnc(state, action);
+        let reducerInfo = find(listOfReducers, reducer => reducer.code === action.type);
+        if (reducerInfo)
+            state = reducerInfo.fnc(state, action);
         return state;
     };
 }

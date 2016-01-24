@@ -58,10 +58,10 @@ function parseActionMap(model) {
         var state = arguments.length <= 0 || arguments[0] === undefined ? model.initialState : arguments[0];
         var action = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
-        var reducer = find(listOfReducers, function (reducer) {
+        var reducerInfo = find(listOfReducers, function (reducer) {
             return reducer.code === action.type;
         });
-        if (reducer) state = reducer.fnc(state, action);
+        if (reducerInfo) state = reducerInfo.fnc(state, action);
         return state;
     };
 }

@@ -17,7 +17,7 @@ function deepPeekAndPoke(obj, selectorString, val) {
 
     var props = selectorString.split('.'),
         final = props.pop(),
-        p = undefined;
+        p;
 
     while (p = props.shift()) {
         if (typeof obj[p] === 'undefined') return undefined;

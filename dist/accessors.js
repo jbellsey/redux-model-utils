@@ -1,6 +1,7 @@
 'use strict';
 
-var store = require('./store');
+var object = require('./object'),
+    store = require('./store');
 
 // create direct getters for accessing the underlying model: "model.data.property"
 // one accessor is created for each selector in your list (and with the same name)

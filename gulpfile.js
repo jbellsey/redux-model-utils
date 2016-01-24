@@ -41,12 +41,17 @@ var browserifier = pkg => {
         .pipe(gulp.dest(outputFolder))
 };
 
-gulp.task('browserify-runone', () => browserifier('runOne'));
-gulp.task('browserify-tests',  () => browserifier('test'));
-gulp.task('browserify',        () => browserifier('code'));
-gulp.task('default',           () => browserifier('code'));
+// build the main code base (as a bundle for testing, not for distribution)
+gulp.task('browserify-codebundle', () => browserifier('code'));
 
-gulp.task('spec', ['browserify', 'browserify-tests'], () => {
+// build the spec files
+gulp.task('browserify-tests',      () => browserifier('test'));
+
+// for internal testing only
+gulp.task('browserify-runone',     () => browserifier('runOne'));
+
+// this runs the test suite
+gulp.task('spec', ['browserify-codebundle', 'browserify-tests'], () => {
 
     var jasmine = require('gulp-jasmine'),
         testFiles = './dist/spec.js',
@@ -59,6 +64,7 @@ gulp.task('spec', ['browserify', 'browserify-tests'], () => {
         .pipe(jasmine(opts));
 });
 
+// build the files in the dist folder for distribution
 gulp.task('build', () => {
     var babel = require('gulp-babel');
     return gulp.src('src/*.js')
