@@ -37,7 +37,10 @@ var browserifier = pkg => {
     return browserify(inputFiles, opts)
         .bundle()
         .pipe(source(outputFile))
-        .pipe(streamify(babel({compact: false})))
+        .pipe(streamify(babel({
+            compact: false,
+            presets: ['es2015']
+        })))
         .pipe(gulp.dest(outputFolder))
 };
 

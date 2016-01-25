@@ -19,19 +19,20 @@ describe('REACT module:', () => {
                 // string selectors
                 color: 'prefs.color',
                 size: 'prefs.size',
-
-                // function selector to build a custom prop
-                custom: (state) => state.prefs.color + '~' + state.prefs.size
             },
             reducer: state => state
-        },
-        model = RU.modelBuilder(modelSeed);
+        };
 
     it('builds reactSelectors correctly', () => {
 
         // build a state object, set up as a sub-model {model:data, model:data}
-        let state = {};
+        let modelDupe = RU.clone(modelSeed),
+            state = {};
         state[modelName] = RU.clone(initial);
+
+        // custom selector to build a custom prop (we do this after CLONE, so it doesn't leak to other tests)
+        modelDupe.selectors.custom = (state) => state.prefs.color + '~' + state.prefs.size;
+        let model = RU.modelBuilder(modelDupe);
 
         // we should get SOMETHING for react selectors, at least
         expect(model.reactSelectors).not.toBeUndefined();
@@ -43,6 +44,33 @@ describe('REACT module:', () => {
         // test a custom prop function. user can do pretty much any maniuplation
         // of state in a selector function
         expect(connectedSelectors.custom).toBe('red~large');
+    });
+
+    it('builds custom react props maps correctly', () => {
+
+        // make a custom set of selectors
+        let customSelectors = {
+                firstLetterOfColor: state => state.prefs.color.charAt(0)
+            },
+            modelDupe = RU.clone(modelSeed);
+
+        // attach the custom selectors as propsMaps
+        modelDupe.propsMaps = {
+            firstOnly: customSelectors
+        };
+
+        // build a model & state object, set up as a sub-model {model:data, model:data}
+        let model = RU.modelBuilder(modelDupe),
+            state = {};
+        state[modelName] = RU.clone(initial);
+
+        // double-check our main reactSelectors (same test as above)
+        let connectedSelectors = model.reactSelectors(state);
+        expect(connectedSelectors.color).toBe('red');
+
+        // now test the custom props map
+        let customSelectorMap = model.propsMaps.firstOnly(state);
+        expect(customSelectorMap.firstLetterOfColor).toBe('r');
     });
 
     // TODO: test mergeReactSelectors

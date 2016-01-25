@@ -24,7 +24,20 @@ function externalizeSelectors(selectors, modelName) {
 }
 
 function reactify(model) {
+
+    // the default map of selectors to props
     model.reactSelectors = externalizeSelectors(model.selectors || {}, model.name);
+
+    // the user can request additional maps be created. each key in the "propsMap"
+    // field on the model is converted into a new set of reactSelectors:
+    //
+    //  model.propsMaps = {key:selectors}
+    //
+
+    model.propsMaps = Object.keys(model.propsMaps || {}).reduce((newPropsMaps, oneMapName) => {
+        newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
+        return newPropsMaps;
+    }, {});
 }
 
 // merge the reactSelectors from multiple models for use in a single connected component.
