@@ -110,14 +110,30 @@ import {connect}             from 'react-redux';
 import {mergeReactSelectors} from 'redux-model-utils';
 
 // here we import any models whose props we need
-import {todoModel}           from './models/todo.js';
 import {uiModel}             from './models/ui.js';
+import {todoModel}           from './models/todo.js';
 
 class TodoList extends Component { /* ... */ }
 
 export default connect(
     // pass in as many models as you need
-    mergeReactSelectors(todoModel, uiModel)
+    mergeReactSelectors(uiModel, todoModel)
+)(TodoList);
+```
+
+You can also merge a props map, as described in the section
+immediately below. You can mix and match models and props
+maps, as needed.
+
+```javascript
+export default connect(
+    mergeReactSelectors(
+        // pass in a model to get its reactSelectors...
+        uiModel,
+
+        // ...or a props map, for a filtered list
+        todoModel.propsMaps.countOnly
+    )
 )(TodoList);
 ```
 

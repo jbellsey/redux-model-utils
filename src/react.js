@@ -33,7 +33,6 @@ function reactify(model) {
     //
     //  model.propsMaps = {key:selectors}
     //
-
     model.propsMaps = Object.keys(model.propsMaps || {}).reduce((newPropsMaps, oneMapName) => {
         newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
         return newPropsMaps;
@@ -41,14 +40,22 @@ function reactify(model) {
 }
 
 // merge the reactSelectors from multiple models for use in a single connected component.
-// duplicate keys will be last-in priority
+// duplicate keys will be last-in priority. accepts a list of either models or reactified maps.
 //
-function mergeReactSelectors(...models) {
+function mergeReactSelectors(...objects) {
 
     return state => {
 
         let props = {};
-        (models || []).forEach(model => deepAssign(props, model.reactSelectors(state)));
+        (objects || []).forEach(oneObject => {
+
+            // is it a model? then pull its already-prepared reactSelectors.
+            // otherwise, it's a propsMap that has already been reactified
+            if (oneObject._magic_rmu)
+                oneObject = oneObject.reactSelectors(state);
+
+            deepAssign(props, oneObject);
+        });
         return props;
     };
 }
