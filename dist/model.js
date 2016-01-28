@@ -150,8 +150,9 @@ function modelBuilder(model) {
     //----------
     // close it up!
     //
+    model._magic_rmu = true;
 
-    return Object.freeze(model);
+    return model;
 }
 
 module.exports = {

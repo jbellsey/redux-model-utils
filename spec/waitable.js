@@ -16,24 +16,22 @@ describe('WAITABLE module:', () => {
                 waitable: true
             },
             reducer,
-            actions:   {},
+            actions:   {
+                setColor: RU.makeActionCreator('setColor', 'col')
+            },
             selectors: {}
         },
-        state, model;
+        model;
 
-    function reducer(state = initial, action = {}) {
-
-        switch (action.type) {
-            case 'setColor':
-                return RU.cloneAndAssign(state, 'prefs.color', action.col);
-
-            default:
-                return state;
-        }
+    function reducer(state, action = {}) {
+        if (!state)
+            state = RU.clone(initial);
+        if (action.type === 'setColor')
+            return RU.cloneAndAssign(state, 'prefs.color', action.col);
+        return state;
     }
 
     beforeEach(() => {
-        state = RU.clone(initial);
         model = RU.modelBuilder(RU.clone(modelSeed));
     });
 
@@ -46,7 +44,7 @@ describe('WAITABLE module:', () => {
 
     it('properly runs the wait action, setting the "waiting" flag', () => {
 
-        var mockStore = store.resetStore(model, state, 1);
+        var mockStore = store.resetStore(model, null, 1);
 
         model.actions.wait();
         expect(mockStore.getState().waiting).toBeTruthy();
@@ -54,25 +52,11 @@ describe('WAITABLE module:', () => {
 
     it('properly runs the stopWaiting action, UNsetting the "waiting" flag', () => {
 
-        var mockStore = store.resetStore(model, state, 2);
+        var mockStore = store.resetStore(model, null, 2);
 
         model.actions.wait();
         expect(mockStore.getState().waiting).toBeTruthy();
         model.actions.stopWaiting();
         expect(mockStore.getState().waiting).toBeFalsy();
-    });
-
-    it('lets other actions pass through to the original reducer', () => {
-
-        var mockStore = store.resetStore(model, state, 2),
-            setColor = RU.makeActionCreator('setColor', 'col'),
-            finalState;
-
-        model.actions.wait();
-        setColor('green');
-
-        finalState = mockStore.getState();
-        expect(finalState.waiting).toBeTruthy();
-        expect(finalState.prefs.color).toBe('green');
     });
 });

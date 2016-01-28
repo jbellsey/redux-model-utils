@@ -68,16 +68,13 @@ describe('ACTION MAP module:', () => {
             name: 'test-model',
             actionMap: {
                 makeBlue: {
-                    code: 'BLUE',
-                    reducer: state => RU.cloneAndAssign(state, 'prefs.color', 'blue')
+                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'blue')
                 },
                 makeAnyColor: {
-                    code: 'ANY',
                     params: 'color',
-                    reducer: (state, action) => RU.cloneAndAssign(state, 'prefs.color', action.color)
+                    reducer: (state, action) => RU.cloneAndAssign(state, selectors.color, action.color)
                 },
                 changeColorAndSize: {
-                    code: 'ColorAndSize',
                     params: ['color', 'size'],
                     reducer: (state, action) => {
                         var s = RU.clone(state);
@@ -96,14 +93,13 @@ describe('ACTION MAP module:', () => {
         state, model;
 
     var prep = () => {
-        state = RU.clone(initial);
         model = RU.modelBuilder(modelSeed);
     };
 
     it('parses an action map and runs basic actions', done => {
 
         prep();
-        var mockStore = store.resetStore(model, state, 4);
+        var mockStore = store.resetStore(model, null, 4);
 
         // runs with no params
         model.actions.makeBlue();
@@ -119,7 +115,7 @@ describe('ACTION MAP module:', () => {
         expect(mockStore.getState().prefs.size).toBe('tiny');
 
         // async
-        model.actions.timer1000().then(done)
+        model.actions.timer1000().then(done);
     });
 
 });

@@ -37,7 +37,7 @@ function makeWaitable(model) {
 
         // merge our initial state into the parent reducer's
         if (typeof state === 'undefined')
-            state = deepAssign({}, originalReducer(), initialState);
+            state = deepAssign({}, originalReducer(state, action), initialState);
 
         if (action.type === actionCodeWait) {
             state = object.clone(state);

@@ -11,12 +11,18 @@ function externalizeSelectors(selectors, modelName) {
 
         return Object.keys(selectors).reduce((map, sel) => {
 
-            let thisSelector = selectors[sel];
+            var thisSelector = selectors[sel],
+                val, subState;
 
-            if (typeof thisSelector === 'function')
-                map[sel] = thisSelector(state[modelName]);
-            else if (typeof thisSelector === 'string')
-                map[sel] = lookup(state, `${modelName}.${thisSelector}`);
+            if (typeof thisSelector === 'function') {
+                subState = state[modelName];
+                val = thisSelector((typeof subState === 'object') ? subState : state);
+            }
+            else if (typeof thisSelector === 'string') {
+                subState = state[modelName];
+                val = lookup((typeof subState === 'object') ? subState : state, thisSelector);
+            }
+            map[sel] = val;
 
             return map;
         }, {});

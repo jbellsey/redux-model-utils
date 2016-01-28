@@ -12,25 +12,21 @@ describe('DATA ACCESSORS module:', () => {
         },
         modelSeed = {
             name: 'test-model',
-            actions: {},
+            actionMap: {},
             initialState: RU.clone(initial),
             selectors: {
                 color: 'prefs.color',
                 size: 'prefs.size'
-            },
-            reducer: state => state
+            }
         },
-        state = RU.clone(initial),
         model = RU.modelBuilder(modelSeed);
-
-
-    // TODO: data accessors aren't testable yet, until we get the mock store to
-    //       scope models into their own substructures (a la combineReducers)
 
     it('creates and handles data accessors for string-selectors and function-selectors', () => {
 
-        var mockStore = store.resetStore(model, state, 0);
-        expect(true).toBeTruthy();
-        //expect(model.data.color).toBe('red');
+        var mockStore = store.resetStore(model, null, 0);
+
+        let oldScope = mockStore.forceFullScope(true);
+        expect(model.data.color).toBe('red');
+        mockStore.forceFullScope(oldScope);
     });
 });
