@@ -4,25 +4,25 @@ var redux       = require('redux'),
     middlewares = [thunk];
 
 /*
-    model   => can be null, or a packaged model, or an array of packaged models
-    state   => can be an {object} or null (to pull initial state from the models)
-    expectedActions
-            => can be an array of {action objects}, or an integer indicating
-                the expected number of actions. use the integer when you don't
-                know the action types exactly. note that this will make it
-                impossible to know if not enough actions were called.
-                but you will get an error if you call too many!
-    onLastAction
-            => if provided, this function is called when the expectedActions
-                have all been called. for integer expectedActions, the function
-                is invoked as soon as the indicated action count is reached.
-*/
+ model   => can be null, or a packaged model, or an array of packaged models
+ state   => can be an {object} or null (to pull initial state from the models)
+ expectedActions
+ => can be an array of {action objects}, or an integer indicating
+ the expected number of actions. use the integer when you don't
+ know the action types exactly. note that this will make it
+ impossible to know if not enough actions were called.
+ but you will get an error if you call too many!
+ onLastAction
+ => if provided, this function is called when the expectedActions
+ have all been called. for integer expectedActions, the function
+ is invoked as soon as the indicated action count is reached.
+ */
 function mockStore(models, state, expectedActions, onLastAction) {
 
-    var currentScope = null,    // or a string (model name)
+    var currentScope           = null,    // or a string (model name)
         expectedActionsIsArray = Array.isArray(expectedActions),
 
-        _setScope = newScope => {
+        local_setScope         = newScope => {
             let oldScope = currentScope;
             currentScope = newScope;
             return oldScope;
@@ -53,9 +53,9 @@ function mockStore(models, state, expectedActions, onLastAction) {
             if (typeof model.actions[oneActionKey] === 'function') {
                 let oldAction = model.actions[oneActionKey];
                 newActions[oneActionKey] = (...args) => {
-                    let oldScope = _setScope(model.name),
+                    let oldScope = local_setScope(model.name),
                         retVal   = oldAction(...args);
-                    _setScope(oldScope);
+                    local_setScope(oldScope);
                     return retVal;
                 }
             }
@@ -65,20 +65,11 @@ function mockStore(models, state, expectedActions, onLastAction) {
         if (addDefaultState)
             state[model.name] = RU.clone(model.reducer(undefined, {}));
     });
-    //console.log('! initial state !!', state);
-
-    // if no state was provided, build it from the models' initial states
-    //if (!state) {
-    //    state = models.reduce((fullState, model) => {
-    //        fullState[model.name] = RU.clone(model.reducer());
-    //        return fullState;
-    //    }, {});
-    //}
 
     function mockStoreWithoutMiddleware() {
         var listeners = [];
 
-        function _getState(scope) {
+        function local_getState(scope) {
 
             if (!scope)
                 scope = currentScope;
@@ -88,7 +79,8 @@ function mockStore(models, state, expectedActions, onLastAction) {
                 return state[scope];
             return state;
         }
-        function _setState(s, scope) {
+
+        function local_setState(s, scope) {
 
             if (!scope)
                 scope = currentScope;
@@ -99,7 +91,8 @@ function mockStore(models, state, expectedActions, onLastAction) {
             else
                 state = s;
         }
-        function _isLastAction() {
+
+        function local_isLastAction() {
             if (expectedActionsIsArray)
                 return expectedActions.length === 0;
             return expectedActions === 0;
@@ -109,24 +102,21 @@ function mockStore(models, state, expectedActions, onLastAction) {
             // external consumers can't customize scope directly;
             // must use setScope (below)
             //
-            // pass UNDEFINED to get the first model's scope
-            // pass NULL to get the FULL model
+            // pass UNDEFINED to get the FULL store, unscoped
             // pass a SPECIFIC model to get its scope
             //
             getState: model => {
 
-                var oldScope;
+                var useFullScope = (model === undefined),
+                    oldScope;
 
-                if (model === undefined)
-                    model = models[0];
-                else if (model === null)
-                    oldScope = _setScope(null);
+                if (useFullScope)
+                    oldScope = local_setScope(null);
 
-                //console.log('getting state for', model ? model.name : null, _getState(model ? model.name : null));
-                let retVal = _getState(model ? model.name : null);
+                let retVal = local_getState(model ? model.name : null);
 
-                if (model === null)
-                    _setScope(oldScope);
+                if (useFullScope)
+                    local_setScope(oldScope);
                 return retVal;
             },
 
@@ -157,15 +147,13 @@ function mockStore(models, state, expectedActions, onLastAction) {
                         fail('expectedActions integer value too low. you called dispatch too many times');
                 }
 
-                // simple single-reducer mock
+                // let all models reduce our action
                 models.forEach(oneModel => {
-                    let newState = oneModel.reducer(_getState(oneModel), action);
-                    _setState(newState, oneModel.name);
+                    let newState = oneModel.reducer(local_getState(oneModel), action);
+                    local_setState(newState, oneModel.name);
                 });
-                //if (model && model.reducer)
-                //    _setState(model.reducer(_getState(), action));
 
-                if (onLastAction && _isLastAction()) {
+                if (onLastAction && local_isLastAction()) {
                     onLastAction();
                 }
                 // tell subscribers
@@ -211,6 +199,7 @@ function resetStore(...args) {
     RU.setStore(store);
     return store;
 }
+
 
 module.exports = {
     resetStore

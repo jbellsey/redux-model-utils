@@ -1,6 +1,25 @@
 var RU    = require('../src/index'),
     store = require('./_store');
 
+describe('MODEL module:', () => {
+
+    var seed = {
+            name: 'test-model',
+            actionMap: {},
+            initialState: {},
+            selectors: {}
+        };
+
+    it('refuses to create models with the same name', () => {
+
+        var setup = () => {
+            RU.modelBuilder(seed);
+            RU.modelBuilder(seed);
+        };
+        expect(setup).toThrow();
+    });
+});
+
 describe('DATA ACCESSORS module:', () => {
 
     var initial  = {
@@ -11,7 +30,7 @@ describe('DATA ACCESSORS module:', () => {
             }
         },
         modelSeed = {
-            name: 'test-model',
+            name: 'accessors-model',
             actionMap: {},
             initialState: RU.clone(initial),
             selectors: {
@@ -23,10 +42,9 @@ describe('DATA ACCESSORS module:', () => {
 
     it('creates and handles data accessors for string-selectors and function-selectors', () => {
 
+        // TODO: more tests
         var mockStore = store.resetStore(model, null, 0);
-
-        let oldScope = mockStore.forceFullScope(true);
+        mockStore.forceFullScope(true);
         expect(model.data.color).toBe('red');
-        mockStore.forceFullScope(oldScope);
     });
 });

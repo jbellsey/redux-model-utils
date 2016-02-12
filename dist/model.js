@@ -13,7 +13,8 @@ var object = require('./object'),
 
 var startsWith = function startsWith(haystack, needle) {
     return haystack.indexOf(needle) === 0;
-};
+},
+    allModelNames = [];
 
 /*
  adjust the model's selectors to include the model name, and possibly "present" to
@@ -95,6 +96,12 @@ function mapSelectors(model) {
 // modify the public API for each model.
 //
 function modelBuilder(model) {
+
+    if (allModelNames.indexOf(model.name) !== -1) throw new Error('redux-model-utils: Two models have the same name (' + model.name + ')');else allModelNames.push(model.name);
+
+    // juice the model name, for conflict-free living
+    model.rawName = model.name;
+    model.name = 'model$_' + model.name;
 
     //----------
     // merge in common functionality for all models

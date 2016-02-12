@@ -16,8 +16,8 @@ function makeWaitable(model) {
     //------ ACTION CODES (private)
     // make some custom action codes
     var thisWaitableID = counter++,
-        actionCodeWait = 'WAITABLE_WAIT_' + model.name + '_' + thisWaitableID,
-        actionCodeStopWaiting = 'WAITABLE_STOP_' + model.name + '_' + thisWaitableID;
+        actionCodeWait = 'WAITABLE[' + thisWaitableID + ']_WAIT_' + model.name,
+        actionCodeStopWaiting = 'WAITABLE[' + thisWaitableID + ']_STOP_' + model.name;
 
     //----- INITIAL STORE STRUCTURE
     var initialState = { waiting: false };

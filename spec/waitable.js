@@ -10,8 +10,8 @@ describe('WAITABLE module:', () => {
                 size: 'large'
             }
         },
+        counter   = 0,
         modelSeed = {
-            name: 'test-model',
             options: {
                 waitable: true
             },
@@ -32,6 +32,7 @@ describe('WAITABLE module:', () => {
     }
 
     beforeEach(() => {
+        modelSeed.name = `wait-model-${counter++}`;
         model = RU.modelBuilder(RU.clone(modelSeed));
     });
 
@@ -47,7 +48,7 @@ describe('WAITABLE module:', () => {
         var mockStore = store.resetStore(model, null, 1);
 
         model.actions.wait();
-        expect(mockStore.getState().waiting).toBeTruthy();
+        expect(mockStore.getState(model).waiting).toBeTruthy();
     });
 
     it('properly runs the stopWaiting action, UNsetting the "waiting" flag', () => {
@@ -55,8 +56,8 @@ describe('WAITABLE module:', () => {
         var mockStore = store.resetStore(model, null, 2);
 
         model.actions.wait();
-        expect(mockStore.getState().waiting).toBeTruthy();
+        expect(mockStore.getState(model).waiting).toBeTruthy();
         model.actions.stopWaiting();
-        expect(mockStore.getState().waiting).toBeFalsy();
+        expect(mockStore.getState(model).waiting).toBeFalsy();
     });
 });

@@ -11,13 +11,21 @@ function buildAccessors(model) {
 
     Object.keys(model.selectors).forEach(key => {
         Object.defineProperty(data, key, {
-            get: () => object.lookup(store.getStore().getState(), model.selectors[key])
+            get: () => {
+                let state = store.getStore().getState();
+                return object.lookup(state, model.selectors[key]);
+            }
         });
     });
     model.data = data;
 
     Object.defineProperty(model, 'allData', {
-        get: () => object.clone(store.getStore().getState()[model.name])
+        get: () => {
+            let state = store.getStore().getState();
+            if (typeof state[model.name] === 'object')
+                state = state[model.name];
+            return object.clone(state);
+        }
     });
 }
 

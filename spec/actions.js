@@ -3,7 +3,6 @@ var RU    = require('../src/index'),
 
 describe('ACTIONS module:', () => {
 
-
     //-----------
 
     it('makes action creators', () => {
@@ -46,7 +45,6 @@ describe('ACTIONS module:', () => {
         fetcher(99);    // triggers an expect inside the dispatch mock
         expect(mockStore.dispatch).toHaveBeenCalled();
         expect(mockStore.dispatch.calls.count()).toEqual(2);
-
     });
 
 });
@@ -64,8 +62,8 @@ describe('ACTION MAP module:', () => {
             color: 'prefs.color',
             size: 'prefs.size'
         },
+        counter = 0,
         modelSeed = {
-            name: 'test-model',
             actionMap: {
                 makeBlue: {
                     reducer: state => RU.cloneAndAssign(state, selectors.color, 'blue')
@@ -83,16 +81,17 @@ describe('ACTION MAP module:', () => {
                         return s;
                     }
                 },
-                timer1000: {
+                timer100: {
                     async: () => new Promise(resolve => setTimeout(resolve, 1000))
                 }
             },
             initialState: initial,
             selectors: selectors
         },
-        state, model;
+        model;
 
     var prep = () => {
+        modelSeed.name = `test-model-${counter++}`;
         model = RU.modelBuilder(modelSeed);
     };
 
@@ -103,19 +102,19 @@ describe('ACTION MAP module:', () => {
 
         // runs with no params
         model.actions.makeBlue();
-        expect(mockStore.getState().prefs.color).toBe('blue');
+        expect(mockStore.getState(model).prefs.color).toBe('blue');
 
         // runs with a single param
         model.actions.makeAnyColor('green');
-        expect(mockStore.getState().prefs.color).toBe('green');
+        expect(mockStore.getState(model).prefs.color).toBe('green');
 
         // runs an [array of params]
         model.actions.changeColorAndSize('purple', 'tiny');
-        expect(mockStore.getState().prefs.color).toBe('purple');
-        expect(mockStore.getState().prefs.size).toBe('tiny');
+        expect(mockStore.getState(model).prefs.color).toBe('purple');
+        expect(mockStore.getState(model).prefs.size).toBe('tiny');
 
         // async
-        model.actions.timer1000().then(done);
+        model.actions.timer100().then(done);
     });
 
 });

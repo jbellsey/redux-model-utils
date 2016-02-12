@@ -1,5 +1,7 @@
 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 var object = require('./object'),
     store = require('./store');
 
@@ -14,7 +16,8 @@ function buildAccessors(model) {
     Object.keys(model.selectors).forEach(function (key) {
         Object.defineProperty(data, key, {
             get: function get() {
-                return object.lookup(store.getStore().getState(), model.selectors[key]);
+                var state = store.getStore().getState();
+                return object.lookup(state, model.selectors[key]);
             }
         });
     });
@@ -22,7 +25,9 @@ function buildAccessors(model) {
 
     Object.defineProperty(model, 'allData', {
         get: function get() {
-            return object.clone(store.getStore().getState()[model.name]);
+            var state = store.getStore().getState();
+            if (_typeof(state[model.name]) === 'object') state = state[model.name];
+            return object.clone(state);
         }
     });
 }

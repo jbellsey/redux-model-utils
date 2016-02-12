@@ -1,5 +1,4 @@
-var RU    = require('../src/index'),
-    store = require('./_store');
+var RU = require('../src/index');
 
 describe('REACT module:', () => {
 
@@ -10,9 +9,8 @@ describe('REACT module:', () => {
                 size: 'large'
             }
         },
-        modelName = 'react-model',
+        counter = 0,
         modelSeed = {
-            name: modelName,
             actions: {},
             initialState: RU.clone(initial),
             selectors: {
@@ -21,6 +19,10 @@ describe('REACT module:', () => {
                 size: 'prefs.size',
             },
             reducer: state => state
+        },
+        makeModel = (model = modelSeed) => {
+            model.name = `react-model-${counter++}`;
+            return RU.modelBuilder(model)
         };
 
     it('builds reactSelectors correctly', () => {
@@ -28,11 +30,12 @@ describe('REACT module:', () => {
         // build a state object, set up as a sub-model {model:data, model:data}
         let modelDupe = RU.clone(modelSeed),
             state = {};
-        state[modelName] = RU.clone(initial);
 
         // custom selector to build a custom prop (we do this after CLONE, so it doesn't leak to other tests)
-        modelDupe.selectors.custom = (state) => state.prefs.color + '~' + state.prefs.size;
-        let model = RU.modelBuilder(modelDupe);
+        modelDupe.selectors.custom = state => state.prefs.color + '~' + state.prefs.size;
+        let model = makeModel(modelDupe);
+
+        state[modelDupe.name] = RU.clone(initial);
 
         // we should get SOMETHING for react selectors, at least
         expect(model.reactSelectors).not.toBeUndefined();
@@ -60,9 +63,9 @@ describe('REACT module:', () => {
         };
 
         // build a model & state object, set up as a sub-model {model:data, model:data}
-        let model = RU.modelBuilder(modelDupe),
+        let model = makeModel(modelDupe),
             state = {};
-        state[modelName] = RU.clone(initial);
+        state[modelDupe.name] = RU.clone(initial);
 
         // double-check our main reactSelectors (same test as above)
         let connectedSelectors = model.reactSelectors(state);
