@@ -7,15 +7,15 @@ var redux       = require('redux'),
  model   => can be null, or a packaged model, or an array of packaged models
  state   => can be an {object} or null (to pull initial state from the models)
  expectedActions
- => can be an array of {action objects}, or an integer indicating
- the expected number of actions. use the integer when you don't
- know the action types exactly. note that this will make it
- impossible to know if not enough actions were called.
- but you will get an error if you call too many!
+         => can be an array of {action objects}, or an integer indicating
+            the expected number of actions, or null-ish if you don't care.
+            use the integer when you don't know the action types exactly. note that this
+            will make it impossible to know if not enough actions were called.
+            but you will get an error if you call too many!
  onLastAction
- => if provided, this function is called when the expectedActions
- have all been called. for integer expectedActions, the function
- is invoked as soon as the indicated action count is reached.
+         => if provided, this function is called when the expectedActions
+            have all been called. for integer expectedActions, the function
+            is invoked as soon as the indicated action count is reached.
  */
 function mockStore(models, state, expectedActions, onLastAction) {
 
@@ -28,8 +28,9 @@ function mockStore(models, state, expectedActions, onLastAction) {
             return oldScope;
         };
 
-    if (!expectedActionsIsArray && typeof expectedActions !== 'number') {
-        throw new Error('expectedActions should be an ARRAY or COUNT of expected actions.');
+    if (!expectedActionsIsArray && typeof expectedActions === 'number') {
+        if (expectedActions < 0)
+            expectedActions = null;
     }
     if (typeof onLastAction !== 'undefined' && typeof onLastAction !== 'function') {
         throw new Error('onLastAction should either be undefined or function.');
@@ -95,7 +96,9 @@ function mockStore(models, state, expectedActions, onLastAction) {
         function local_isLastAction() {
             if (expectedActionsIsArray)
                 return expectedActions.length === 0;
-            return expectedActions === 0;
+            else if (expectedActions != null)
+                return expectedActions === 0;
+            return false;
         }
 
         return {
@@ -142,14 +145,14 @@ function mockStore(models, state, expectedActions, onLastAction) {
                     expectedAction = expectedActions.shift();
                     expect(action).toEqual(expectedAction);
                 }
-                else {
+                else if (expectedAction != null) {
                     if (--expectedActions < 0)
                         fail('expectedActions integer value too low. you called dispatch too many times');
                 }
 
                 // let all models reduce our action
                 models.forEach(oneModel => {
-                    let newState = oneModel.reducer(local_getState(oneModel), action);
+                    let newState = oneModel.reducer(local_getState(oneModel.name), action);
                     local_setState(newState, oneModel.name);
                 });
 
