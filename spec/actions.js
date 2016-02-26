@@ -1,5 +1,6 @@
 var RU    = require('../src/index'),
-    store = require('./_store');
+    store = require('./_store'),
+    mockStore;
 
 describe('ACTIONS module:', () => {
 
@@ -8,8 +9,9 @@ describe('ACTIONS module:', () => {
     it('makes action creators', () => {
 
         var expected  = [{ type:'incr', value:4 }],
-            incr      = RU.makeActionCreator('incr', 'value'),
-            mockStore = store.resetStore(null, {}, expected);
+            incr      = RU.makeActionCreator('incr', 'value');
+
+        mockStore = store.resetStore(null, {}, expected);
 
         incr(4);    // triggers an expect inside the dispatch mock
         expect(mockStore.dispatch).toHaveBeenCalled();
@@ -39,8 +41,9 @@ describe('ACTIONS module:', () => {
                     finish(111);
                     done();
                 }, 1);
-            }, 'userID'),
-            mockStore = store.resetStore(null, {}, expected);
+            }, 'userID');
+
+        mockStore = store.resetStore(null, {}, expected);
 
         fetcher(99);    // triggers an expect inside the dispatch mock
         expect(mockStore.dispatch).toHaveBeenCalled();
@@ -82,7 +85,19 @@ describe('ACTION MAP module:', () => {
                     }
                 },
                 timer100: {
-                    async: () => new Promise(resolve => setTimeout(resolve, 1000))
+                    async: () => new Promise(resolve => setTimeout(resolve, 10))
+                },
+                privateAction: {
+                    private: true,
+                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'peacock')
+                },
+                anotherPrivateAction: {
+                    private: true,
+                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'sandstone')
+                },
+                privateAsync: {
+                    private: true,
+                    async: () => new Promise(resolve => setTimeout(resolve, 10))
                 }
             },
             initialState: initial,
@@ -90,31 +105,54 @@ describe('ACTION MAP module:', () => {
         },
         model;
 
-    var prep = () => {
-        modelSeed.name = `test-model-${counter++}`;
-        model = RU.modelBuilder(modelSeed);
-    };
+    describe('parses an action map and:', () => {
 
-    it('parses an action map and runs basic actions', done => {
+        beforeEach(() => {
+            modelSeed.name = `test-model-${counter++}`;
+            model = RU.modelBuilder(RU.clone(modelSeed));
+            mockStore = store.resetStore(model);
+        });
 
-        prep();
-        var mockStore = store.resetStore(model, null, 4);
+        it('runs with no params', () => {
+            model.actions.makeBlue();
+            expect(mockStore.getState(model).prefs.color).toBe('blue');
+        });
 
-        // runs with no params
-        model.actions.makeBlue();
-        expect(mockStore.getState(model).prefs.color).toBe('blue');
+        it('runs with a single param', () => {
+            model.actions.makeAnyColor('green');
+            expect(mockStore.getState(model).prefs.color).toBe('green');
+        });
 
-        // runs with a single param
-        model.actions.makeAnyColor('green');
-        expect(mockStore.getState(model).prefs.color).toBe('green');
+        it('runs an [array of params]', () => {
+            model.actions.changeColorAndSize('purple', 'tiny');
+            expect(mockStore.getState(model).prefs.color).toBe('purple');
+            expect(mockStore.getState(model).prefs.size).toBe('tiny');
+        });
 
-        // runs an [array of params]
-        model.actions.changeColorAndSize('purple', 'tiny');
-        expect(mockStore.getState(model).prefs.color).toBe('purple');
-        expect(mockStore.getState(model).prefs.size).toBe('tiny');
+        it('runs an async action', done => {
+            model.actions.timer100().then(done);
+        });
 
-        // async
-        model.actions.timer100().then(done);
+        it('keeps private actions separate', () => {
+            expect(model.actions.privateAction).not.toBeDefined();
+            expect(model.privateActions.privateAction).toBeDefined();
+        });
+
+        it('runs private actions properly', done => {
+            model.privateActions.privateAction();
+            expect(mockStore.getState(model).prefs.color).toBe('peacock');
+            model.privateActions.privateAsync().then(done);
+        });
+
+        it('allows privateActions object to be severed from the model', () => {
+            var trulyPrivate = model.severPrivateActions();
+
+            // should be disconnected
+            expect(model.privateActions).toBeNull();
+
+            // should run when called from our truly private object
+            trulyPrivate.anotherPrivateAction();
+            expect(mockStore.getState(model).prefs.color).toBe('sandstone');
+        });
     });
-
 });

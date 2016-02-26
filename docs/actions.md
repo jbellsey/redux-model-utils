@@ -152,19 +152,59 @@ section is for you.
 
 ### Creating private actions
 
-One other limitation of action maps: all action definitions are public.
-You can't build an action-creator which is only available within your module.
-If you need to make an action-creator for private use, you'll need to use
-the technique below, which will be familiar to any Redux programmer.
-
+There are good reasons to make actions that are private to your model.
 See the async example in the [API docs](api-model.md) for a use-case
 and a model which has both public and private action-creators.
+
+To make an action map with private actions is a two-step process.
+First, add a `private` key to any action definition that
+you want to keep private. Then, after your model is built, call
+`severPrivateActions` to ensure no other caller can use your action.
+
+```javascript
+let actionMap = {
+
+        // this action is private. it's called after the (public) save
+        // operation is complete
+        _storeData: {
+            private: true,  // flag it
+            params: 'data',
+            reducer: (state, action) => {
+                state = clone(state);
+                state.data = action.data;
+            }
+        },
+
+        // this is the public interface for saving data. when the
+        // data returns, we call a private action
+        save: {
+            params: 'recordID',
+            async(params) {
+                return api.save(params.recordID).then(
+                    // note that the private action is not attached to the model
+                    data => privateActions._storeData(data)
+                )
+            }
+        }
+    },
+
+    model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
+
+    // here we extract a module-local reference to the private actions
+    privateActions = model.severPrivateActions();
+
+// ... then later, in your view ...
+model.actions.save(44).then(closeForm);
+
+// this will throw an error, since the private actions were severed
+model.actions._storeData({});
+```
+
 
 # Normal action-creators
 
 You don't actually need to use action maps. But you should! But you don't need to,
-and we just described a situation where you can't, so
-here's how you can do it with a more "stock" implementation.
+so here's how you can do it with a more "stock" implementation.
 
 We provide a utility called `makeActionCreator`, which -- this will shock you --
 builds an action creator. As with all actions you build with this library,

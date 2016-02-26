@@ -16,7 +16,7 @@ In this example, we'll use an action map. The view code will be shown next.
 
 ```javascript
 let   reduxModelUtils  = require('redux-model-utils'),
-      model;    // set below
+      model, privateActions;    // set below
 
 const
     // prepare an empty store. you're doing this already.
@@ -33,9 +33,10 @@ const
     // we set the "waitable" option below.
     actionMap = {
 
-        // this action is semi-private. to create a truly private action you cannot use
-        // an action map. instead, use makeActionCreator. the [actions.md] doc explains this.
+        // this action is private, usable only within this module.
+        // see the use of "severPrivateActions" below
         _setLocation: {
+            private: true,
             params:  'location', // only one param for the action creator
 
             // the reducer is atomic, only used for this one action, which makes it trivial.
@@ -51,7 +52,7 @@ const
                 // create some callbacks for the geolocation API
                 let err = () => {
                         // call the private action to clear out the state
-                        model.actions._setLocation({});
+                        privateActions._setLocation({});
 
                         // this (synchronous) action is magically installed because
                         // we flag the model as "waitable"
@@ -59,7 +60,7 @@ const
                     },
                     success = position => {
                         // we call the private action here. the variable "model" is set below
-                        model.actions._setLocation({
+                        privateActions._setLocation({
                             latitude:  position.coords.latitude,
                             longitude: position.coords.longitude
                         });
@@ -95,6 +96,10 @@ module.exports = model = reduxModelUtils.modelBuilder({
         waitable: true
     }
 });
+
+// separate out the private actions, so they can only be used
+// inside this module
+privateActions = model.severPrivateActions();
 ```
 
 # View code

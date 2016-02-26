@@ -25,13 +25,15 @@ function find(arr, predicate) {
 function parseActionMap(model) {
 
     var listOfActions  = {},
+        listOfPrivateActions = {},
         listOfReducers = [];
 
     Object.keys(model.actionMap).forEach(key => {
 
         let actionDetails = model.actionMap[key],
             code          = `${model.name}_${key}`,
-            params        = actionDetails.params;
+            params        = actionDetails.params,
+            putHere       = actionDetails.private ? listOfPrivateActions : listOfActions;
 
         if (typeof params === 'string')
             params = [params];
@@ -40,10 +42,10 @@ function parseActionMap(model) {
 
         // add an action-creator. async is handled differently
         if (actionDetails.async) {
-            listOfActions[key] = actions.makeAsyncAction(actionDetails.async, ...params);
+            putHere[key] = actions.makeAsyncAction(actionDetails.async, ...params);
         }
         else {
-            listOfActions[key] = actions.makeActionCreator(code, ...params);
+            putHere[key] = actions.makeActionCreator(code, ...params);
 
             // install the reducer
             listOfReducers.push({
@@ -53,15 +55,33 @@ function parseActionMap(model) {
         }
     });
 
-    // the output of the actionMap: actions & reducer
+    // the output of the actionMap: public actions, private actions, and reducer
     model.actions = listOfActions;
+    model.privateActions = listOfPrivateActions;
     model.reducer = (state = model.initialState, action = {}) => {
 
-        let reducerInfo = find(listOfReducers, reducer => reducer.code === action.type);
+        let matcher     = reducer => reducer.code === action.type,
+            reducerInfo = find(listOfReducers, matcher);
+
+        if (!reducerInfo)
+            reducerInfo = find(listOfPrivateActions, matcher);
+
         if (reducerInfo)
             state = reducerInfo.fnc(state, action);
         return state;
     };
+
+    // this can be used one time only.
+    // it retrieves the list of private actions, and severs
+    // that list from the public model.
+    //
+    if (Object.keys(listOfPrivateActions).length > 0) {
+        model.severPrivateActions = () => {
+            var trulyPrivateActions = model.privateActions;
+            model.privateActions = null;
+            return trulyPrivateActions;
+        }
+    }
 }
 
 module.exports = {
