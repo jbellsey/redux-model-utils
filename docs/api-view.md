@@ -31,7 +31,7 @@ More details on using this library with React can be found [here](react.md).
 
 #### subscribe(selector, cb, opts)
 
-Here `selector` is a provided by the model, and may be either a string or a function.
+Here `selector` is typically provided by the model, and may be either a string or a function.
 `cb` is your handler for responding to changes in the model, and
 `opts` allow you to configure the subscription.
 
@@ -39,10 +39,16 @@ The signature of the callback is `function(newValue, previousValue) {}`. In most
 situations, you won't even need the previous value, since the callback is only
 invoked when the portion of the model referenced by `selector` changes.
 
-The options object currently accepts only one attribute: `noInit`. If you set
+The options object currently accepts only the following attributes:
+
+* `noInit`: If you set
 this to `true`, your callback will not be invoked at initalization time.
-You will often omit this option, as you'll want your callback to get initialized
+This option is not often used, as you'll want your callback to get initialized
 with a starting value.
+* `equals`: The normal subscription routine checks for equality
+by comparing primitives (i.e., `a === b`). If you are subscribing
+to changes in something other than a primitive, you can provide
+a custom function to test for equality. See below for an example.
 
 The `subscribe` function passes back the same `unsubscribe` hook that you get from
 the Redux store.
@@ -57,4 +63,47 @@ let unsub = todoModel.subscribe(todoModel.selectors.todos, todoList => {
     // do something with the new data
     console.log('todos changed', todoList);
 });
+// and later...
+unsub();
+```
+
+If your selector points to something other than a primitive --
+another object, for example -- then you need to provide a custom
+test for equality. The signature is `(a, b) => bool`. You must
+take care to guard against one or more of the input parameters
+being undefined.
+
+In this example, we're subscribing to changes on an object.
+The callback function gets the full `userData` object. The
+default test for equality won't work when comparing objects;
+we need to look into the object to compare the `userID`
+properties.
+
+```javascript
+let initialState = {
+        userData: {
+            userID: 0,
+            email:  '',
+            avatar: ''
+        }
+    },
+    // this selector exposes an object, not a primitive
+    selectors = {
+        userData: 'userData'
+    },
+    // ...
+    model = reduxModelUtils.modelBuilder({ /* ... */ });
+
+// then, in your view...
+let unsub = model.subscribe(
+        model.selectors.userData, // selector for this subscription
+        newUserData => {
+            // the user data object changed
+        },
+        {
+            equals: (a, b) => (a && a.userID) === (b && b.userID)
+        }
+    )
+
+
 ```

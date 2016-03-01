@@ -136,3 +136,42 @@ let actions = {
 // ... later ...
 model.actions.query('harry').then(showProfilePage);
 ```
+
+#### severPrivateActions()
+
+If you use an action map, you can make some actions
+private, as described and documented on the
+[actions page](actions.md). Call this method to
+remove the private actions from your model's public
+interface.
+
+```javascript
+let actionMap = {
+
+        secretAction: {
+            private: true,
+            params: 'data',
+            reducer: (state, action) => {
+                state = clone(state);
+                state.data = action.data;
+            }
+        },
+
+        publicAction: {
+            async() {
+                setTimeout(() => privateActions.secretAction({a:1}), 1);
+            }
+        }
+    },
+
+    model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
+
+    // call sever; this can only be done once
+    privateActions = model.severPrivateActions();
+
+// ... then later, in your view ...
+model.actions.publicAction();
+
+// this will throw an error, since the private actions were severed
+model.actions.secretAction({a:2});
+```

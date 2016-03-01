@@ -14,7 +14,7 @@ function makeUndoable(model) {
 
     // sanity check
     if (typeof undoable !== 'function' || (typeof undoActions === 'undefined' ? 'undefined' : _typeof(undoActions)) !== 'object') {
-        throw new Error('redux-utils: You must load the "redux-undo" library if you request an undoable');
+        throw new Error('redux-model-utils: You must load the "redux-undo" library if you request an undoable');
     }
 
     //----- SELECTORS

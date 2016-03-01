@@ -18,22 +18,28 @@ var store = require('./store').getStore,
  *      (newValue, previousValue) => {}
  *
  * @param opts{object}
- * Subscription options. Currently only one option is available:
+ * Subscription options. The following options are available:
  *      {noInit:true} to suppress invoking the callback once at initialization time
+ *      {equals:function} to provide a custom test for equality. The default comparator
+ *              looks at primitive values only (i.e., a === b).
  *
  * @returns {function}
  * Passes back the return from store.subscribe() -- i.e., the unsubscribe function
  *
  */
-function subscribe(selector, cb, opts) {
+function subscribe(selector, cb) {
+    var opts = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
 
     var previousValue,
+        equals = opts.equals || function (a, b) {
+        return a === b;
+    },
         val = function val() {
         return object.lookup(store().getState(), selector);
     },
         handler = function handler() {
         var currentValue = val();
-        if (previousValue !== currentValue) {
+        if (!equals(previousValue, currentValue)) {
             var temp = previousValue;
             previousValue = currentValue;
             cb(currentValue, temp);
@@ -43,7 +49,7 @@ function subscribe(selector, cb, opts) {
     // normally, we invoke the callback on startup, so that it gets
     // an initial value. you can suppress this with opts.noInit
     //
-    if (!(opts && opts.noInit)) cb(previousValue = val());
+    if (!opts.noInit) cb(previousValue = val());
 
     // return the unsubscribe function to the caller
     return store().subscribe(handler);

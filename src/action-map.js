@@ -26,14 +26,22 @@ function parseActionMap(model) {
 
     var listOfActions  = {},
         listOfPrivateActions = {},
-        listOfReducers = [];
+        listOfReducers = [],
+        anyPrivate = false;
 
     Object.keys(model.actionMap).forEach(key => {
 
         let actionDetails = model.actionMap[key],
             code          = `${model.name}_${key}`,
             params        = actionDetails.params,
-            putHere       = actionDetails.private ? listOfPrivateActions : listOfActions;
+            putHere;
+
+        if (actionDetails.private) {
+            putHere = listOfPrivateActions;
+            anyPrivate = true;
+        }
+        else
+            putHere = listOfActions;
 
         if (typeof params === 'string')
             params = [params];
@@ -75,7 +83,7 @@ function parseActionMap(model) {
     // it retrieves the list of private actions, and severs
     // that list from the public model.
     //
-    if (Object.keys(listOfPrivateActions).length > 0) {
+    if (anyPrivate) {
         model.severPrivateActions = () => {
             var trulyPrivateActions = model.privateActions;
             model.privateActions = null;

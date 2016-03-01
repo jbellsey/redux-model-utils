@@ -147,4 +147,27 @@ describe('SUBSCRIBE module:', () => {
         expect(sizeInvocations).toBe(1);
         expect(colorInvocations).toBe(1);
     });
+
+
+    it('runs custom equality tests', () => {
+
+        var mockStore = store.resetStore(model),
+            invokeCt = 0;
+
+        RU.subscribe(
+            model.name + '.prefs',
+            newPrefs => {
+                ++invokeCt;
+                expect(newPrefs.color).toEqual('bone');
+            },
+            {
+                equals: (oldPrefs, newPrefs) => (oldPrefs && oldPrefs.color) === (newPrefs && newPrefs.color),
+                noInit: true
+            }
+        );
+
+        setColor('bone');
+        expect(invokeCt).toEqual(1);
+        expect(mockStore.getState(model).prefs.color).toEqual('bone');
+    });
 });
