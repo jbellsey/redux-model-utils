@@ -10,7 +10,7 @@ coordinates back from the API. There is
 one observable property (`location`), which is an object with the device's
 coordinates.
 
-In this example, we'll use an action map. The view code will be shown next.
+The view code will be shown next.
 
 # Model code
 
@@ -39,12 +39,11 @@ const
             private: true,
             params:  'location', // only one param for the action creator
 
-            // the reducer is atomic, only used for this one action, which makes it trivial.
-            // the use of "cloneAndAssign" (and its use of the selector string) is a common pattern
-            reducer: (state, action) => reduxModelUtils.cloneAndAssign(state, selectors.location, action.location)
+            // the reducer is atomic, only used for this one action, which makes it trivial
+            reducer: (state, action) => Object.assign(state, {location: action.location})
         },
 
-        // this is the only action that should be called by views. it takes no params,
+        // this is the only action that can be called by views. it takes no params,
         // and is asynchronous
         getLocation: {
             async() {
@@ -59,7 +58,7 @@ const
                         model.actions.stopWaiting();
                     },
                     success = position => {
-                        // we call the private action here. the variable "model" is set below
+                        // we call the private action here
                         privateActions._setLocation({
                             latitude:  position.coords.latitude,
                             longitude: position.coords.longitude

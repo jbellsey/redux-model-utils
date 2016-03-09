@@ -1,7 +1,7 @@
 'use strict';
 
 var store = require('./store').getStore,
-    object = require('./object');
+    lookup = require('./lookup');
 
 /**
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
@@ -35,7 +35,7 @@ function subscribe(selector, cb) {
         return a === b;
     },
         val = function val() {
-        return object.lookup(store().getState(), selector);
+        return lookup(store().getState(), selector);
     },
         handler = function handler() {
         var currentValue = val();

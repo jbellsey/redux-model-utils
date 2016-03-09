@@ -2,8 +2,7 @@ var store = require('./store').getStore;
 
 // returns a redux-standard action object. it always has a {type} key,
 // plus whatever values you request in the [valueNames] and [values] arrays.
-// this should not typically be needed by client applications; use the other
-// tools provided below.
+// this is not needed by client applications; use the other tools provided below.
 //
 function makeAction(type, valueNames, values) {
     let action = {type};
@@ -14,7 +13,7 @@ function makeAction(type, valueNames, values) {
 }
 
 // builds a partially-applied function for creating actions dynamically.
-// this is the most common way to build and dispatch actions.
+// this is the most common way to build and dispatch actions in redux.
 //
 // example:
 //      let add = makeActionCreator('adder', 'number');

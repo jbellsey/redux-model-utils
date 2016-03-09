@@ -6,7 +6,8 @@ in your application. It's not exposed in this repo, so
 you'll have to copy the source into your application.
 
 You can see some of our testing patterns in the
-spec directory of this repo. Or have a look below.
+spec directory of this repo, especially our tests for
+action maps. Or have a look below.
 
 ### Useful testing patterns
 
@@ -20,6 +21,7 @@ describe('my model', () => {
 
     var mockStore;
 
+    // the mock store takes a list of models
     beforeEach(() => mockStore = store.resetStore(model));
 
     // a basic test that our action does what it should
@@ -53,7 +55,6 @@ describe('my model', () => {
             expect(data.provider).toEqual('twitter');
             done();
         });
-
     });
 });
 

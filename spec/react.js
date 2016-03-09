@@ -1,4 +1,5 @@
-var RU = require('../src/index');
+var clone = require('clone'),
+    RU    = require('../src/index');
 
 describe('REACT module:', () => {
 
@@ -12,7 +13,7 @@ describe('REACT module:', () => {
         counter = 0,
         modelSeed = {
             actions: {},
-            initialState: RU.clone(initial),
+            initialState: clone(initial),
             selectors: {
                 // string selectors
                 color: 'prefs.color',
@@ -28,14 +29,14 @@ describe('REACT module:', () => {
     it('builds reactSelectors correctly', () => {
 
         // build a state object, set up as a sub-model {model:data, model:data}
-        let modelDupe = RU.clone(modelSeed),
+        let modelDupe = clone(modelSeed),
             state = {};
 
         // custom selector to build a custom prop (we do this after CLONE, so it doesn't leak to other tests)
         modelDupe.selectors.custom = state => state.prefs.color + '~' + state.prefs.size;
         let model = makeModel(modelDupe);
 
-        state[modelDupe.name] = RU.clone(initial);
+        state[modelDupe.name] = clone(initial);
 
         // we should get SOMETHING for react selectors, at least
         expect(model.reactSelectors).not.toBeUndefined();
@@ -55,7 +56,7 @@ describe('REACT module:', () => {
         let customSelectors = {
                 firstLetterOfColor: state => state.prefs.color.charAt(0)
             },
-            modelDupe = RU.clone(modelSeed);
+            modelDupe = clone(modelSeed);
 
         // attach the custom selectors as propsMaps
         modelDupe.propsMaps = {
@@ -65,7 +66,7 @@ describe('REACT module:', () => {
         // build a model & state object, set up as a sub-model {model:data, model:data}
         let model = makeModel(modelDupe),
             state = {};
-        state[modelDupe.name] = RU.clone(initial);
+        state[modelDupe.name] = clone(initial);
 
         // double-check our main reactSelectors (same test as above)
         let connectedSelectors = model.reactSelectors(state);

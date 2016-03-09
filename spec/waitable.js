@@ -1,5 +1,7 @@
-var RU    = require('../src/index'),
-    store = require('./_store');
+var assignDeep  = require('assign-deep'),
+    clone       = require('clone'),
+    RU          = require('../src/index'),
+    store       = require('./_store');
 
 describe('WAITABLE module:', () => {
 
@@ -25,15 +27,15 @@ describe('WAITABLE module:', () => {
 
     function reducer(state, action = {}) {
         if (!state)
-            state = RU.clone(initial);
+            state = clone(initial);
         if (action.type === 'setColor')
-            return RU.cloneAndAssign(state, 'prefs.color', action.col);
+            return assignDeep({}, state, {prefs: {color: action.col}});
         return state;
     }
 
     beforeEach(() => {
         modelSeed.name = `wait-model-${counter++}`;
-        model = RU.modelBuilder(RU.clone(modelSeed));
+        model = RU.modelBuilder(clone(modelSeed));
     });
 
     it('installs new actions and selectors', () => {

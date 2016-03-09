@@ -2,12 +2,10 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var object = require('./object'),
-    actions = require('./actions'),
+var assignDeep = require('assign-deep'),
     actionMap = require('./action-map'),
     accessors = require('./accessors'),
     waitable = require('./waitable'),
-    undoable = require('./undoable'),
     react = require('./react'),
     subscribe = require('./subscribe');
 
@@ -33,10 +31,6 @@ var startsWith = function startsWith(haystack, needle) {
  ORIGINAL:  selector.location = "location"
  MODIFIED:  selector.location = modelName + ".location"
 
- if the model is undoable, the selectors are then scoped to "present":
-
- UNDOABLE:  selector.location = modelName + ".present.location";
-
  NOTE: this actually SEVERS the connection to [model.selectors], and inserts an
  entirely new object map.
  */
@@ -44,45 +38,18 @@ var startsWith = function startsWith(haystack, needle) {
 function mapSelectors(model) {
 
     // make a full copy of the selectors
-    var newSelectors = object.clone(model.selectors || {}),
-        isUndoable = model.options && model.options.undoable,
-        presentPrefix = 'present.',
-        pastPrefix = 'past.',
-        futurePrefix = 'future.',
+    var newSelectors = assignDeep({}, model.selectors || {}),
         modelNamePrefix = model.name + '.',
         fixOneSelector = function fixOneSelector(selectorKey) {
 
         var orig = newSelectors[selectorKey];
 
         if (typeof orig === 'string') {
-
-            if (isUndoable) {
-
-                // undoables must start with modelname, then "present"
-                // we omit "present" if we find "past" or "future", which means
-                // the user is being deliberate about which undo stack they want
-                //
-                if (!(startsWith(orig, presentPrefix) || startsWith(orig, pastPrefix) || startsWith(orig, futurePrefix))) orig = modelNamePrefix + presentPrefix + orig;else if (!startsWith(orig, modelNamePrefix)) orig = modelNamePrefix + orig;
-                newSelectors[selectorKey] = orig;
-            } else {
-                // not undoable: selector must start with the model name
-                if (!startsWith(orig, modelNamePrefix)) newSelectors[selectorKey] = modelNamePrefix + orig;
-            }
+            if (!startsWith(orig, modelNamePrefix)) newSelectors[selectorKey] = modelNamePrefix + orig;
         } else if (typeof orig === 'function') {
-
-            if (isUndoable) {
-                // for function selectors, we can't tell if the function is looking into
-                // the past or future zones. we have to assume present. for past/future
-                // selectors, you must use a string.
-                //
-                newSelectors[selectorKey] = function (state) {
-                    return orig(state[model.name].present);
-                };
-            } else {
-                newSelectors[selectorKey] = function (state) {
-                    return orig(state[model.name]);
-                };
-            }
+            newSelectors[selectorKey] = function (state) {
+                return orig(state[model.name]);
+            };
         }
     };
 
@@ -132,11 +99,6 @@ function modelBuilder(model) {
         //  • a boolean in the store. subscribe to changes at model.selectors.waiting
         //
         if (model.options.waitable) waitable.makeWaitable(model);
-
-        // similar for undoable functionality. adds actions (undo, redo) and subscribable
-        // properties (undoLength, redoLength)
-        //
-        if (_typeof(model.options.undoable) === 'object') undoable.makeUndoable(model);
     }
 
     //----------

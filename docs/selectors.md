@@ -2,11 +2,10 @@
 # Selectors
 
 Selectors are roadmaps; they hold the algorithm to finding a specific property in
-your store. They are used outside your model (for observable properties), and
+your store. They are used outside your model for observable properties, and sometimes
 inside your model (for your own convenience when building reducers).
 
-They come in two forms. Each has its advantages and disadvantages, but they are
-both fully implemented.
+They come in two forms. Each has its advantages and disadvantages.
 
 A **string** selector is a representation of the path to the property in dot notation.
 A **function** selector maps a `state` object to a property nested inside.
@@ -36,61 +35,10 @@ let functionSelectors = {
 };
 ```
 
-### Strings vs. functions
+# React
 
-You can use either. However, string selectors have the added advantage
-that they can be used for *writing* to your model, as well as *reading* from it.
-With function selectors, you can only read. Have a look at the object-related
-utility functions (e.g., `cloneAndAssign`).
-
-Here's an example using selector strings:
-
-```javascript
-// a string selector is usable in the reducer. keeps things dry.
-let locationSelectorString = 'preferences.location';
-
-function reducer(state = initialState, action = {}) {
-
-    switch (action.type) {
-
-        case actionCodes.SET_LOCATION:
-            // so nice: with one line, we clone the state and modify one
-            // property (which may be deeply nested). as a bonus, even
-            // the reducer doesn't expressly know about the model structure
-            return reduxModelUtils.cloneAndAssign(state, locationSelectorString, action.location);
-    }
-    return state;
-}
-```
-In one line of code, you duplicate the state and change one deeply-nested property. But this
-only works with a string selector.
-
-To do the same with a function selector, well, you can't.
-You have to do it manually (which is fine, of course). Here's the
-same example, rewritten with a selector function:
-
-```javascript
-// a function selector is not usable inside the reducer
-let locationSelectorFunc = state => state.preferences.location;
-
-function reducer(state = initialState, action = {}) {
-
-    switch (action.type) {
-
-        case actionCodes.SET_LOCATION:
-            // more verbose. and less dry.
-            return reduxModelUtils.cloneAndMerge(state, {
-                preferences: {
-                    location: action.location;
-                }
-            });
-    }
-    return state;
-}
-```
-Here we've used our `cloneAndMerge()` function to duplicate the state and merge
-in the new location value. This is a smarter version of `Object.assign`,
-detailed below.
+The selectors are also used when connecting your model to a component.
+See [react.md](our React docs).
 
 # Data accessors
 
@@ -99,7 +47,7 @@ data from the store at any time. An object called `data` is created for you and
 attached to your model; its keys match those in your selectors.
 
 To get the full store, use the object called `allData`. This object
-returns a full read-only copy of the entire store, exactly as you
+returns a full copy of the entire store, exactly as you
 structured it.
 
 ```javascript

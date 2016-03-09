@@ -35,7 +35,7 @@ let actionMap = {
     },
     setListName: {
         params: 'name',
-        reducer: (state, action) => reduxModelUtils.cloneAndAssign(state, selectors.listName, params.name)
+        reducer: (state, action) => Object.assign(state, {listName: params.name})
     }
 }
 export let todoModel = reduxModelUtils.modelBuilder({
@@ -105,8 +105,6 @@ If your component needs props from more than one model, you can combine them wit
 `mergeReactSelectors`:
 
 ```javascript
-import React, {Component}    from 'react';
-import {connect}             from 'react-redux';
 import {mergeReactSelectors} from 'redux-model-utils';
 
 // here we import any models whose props we need
@@ -131,7 +129,7 @@ export default connect(
         // pass in a model to get its reactSelectors...
         uiModel,
 
-        // ...or a props map, for a filtered list
+        // ...or a props map, for a filtered list (see below)
         todoModel.propsMaps.countOnly
     )
 )(TodoList);

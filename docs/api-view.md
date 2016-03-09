@@ -101,6 +101,7 @@ let unsub = model.subscribe(
             // the user data object changed
         },
         {
+            // look at the userID property of the userData object
             equals: (a, b) => (a && a.userID) === (b && b.userID)
         }
     )

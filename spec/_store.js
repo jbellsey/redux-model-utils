@@ -1,4 +1,5 @@
-var redux       = require('redux'),
+var clone       = require('clone'),
+    redux       = require('redux'),
     thunk       = require('redux-thunk'),
     RU          = require('../src/index'),
     middlewares = [thunk];
@@ -64,7 +65,7 @@ function mockStore(models, state, expectedActions, onLastAction) {
         model.actions = newActions;
 
         if (addDefaultState)
-            state[model.name] = RU.clone(model.reducer(undefined, {}));
+            state[model.name] = clone(model.reducer(undefined, {}));
     });
 
     function mockStoreWithoutMiddleware() {
@@ -86,7 +87,7 @@ function mockStore(models, state, expectedActions, onLastAction) {
             if (!scope)
                 scope = currentScope;
 
-            s = RU.clone(s);
+            s = clone(s);
             if (scope)
                 state[scope] = s;
             else

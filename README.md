@@ -42,21 +42,12 @@ todoModel.actions.addTodo('Go for a soda');
 ```
 
 No more `switch` statements in big reducers that handle multiple actions.
-No need for public-facing action codes.
-No need to do your own `dispatch`.
+No need for action codes. No need to do your own `dispatch`.
 
-This is true encapsulation for your models.
+This is true encapsulation for your models. Your actions and reducers are together,
+where they belong.
 
-While action maps are sweet, you don't have to use them.
-You can use another utility function `makeActionCreator`,
-which is straight from the Redux docs.
-
-```javascript
-let addTodo = reduxModelUtils.makeActionCreator('TODO_ADD', 'text');
-addTodo('Sell car');    // dispatch is called for you
-```
-
-There are also tools for async actions. Read the
+There are also tools for async actions, private actions, and more. Read the
 [full docs on actions](docs/actions.md).
 
 ### Easy connection to React components
@@ -122,8 +113,8 @@ to changes across multiple models. And in non-React apps, you'll typically use
 
 ### Change-notification (subscriptions)
 
-Built on top of Redux's subscription tool, this allows you to get notified only when
-a property is changed. Use this for cross-cutting concerns. (In non-React apps, this
+Built on top of Redux's subscription tool, this subscription will only alert
+you when a property changes. Use this for cross-cutting concerns. (In non-React apps, this
 will be your main rendering trigger.)
 
 ```javascript
@@ -140,19 +131,8 @@ Adding a spinner to your async operations just got trivial. In one
 line of code, you can add two actions to your model (`wait()` and
 `stopWaiting()`) and a boolean flag to the store (`waiting`).
 
-Similarly, adding undo to your model with [redux-undo](https://github.com/omnidan/redux-undo)
-is super-easy. With one line of code, you get `undo()` and `redo()`
-actions, as well as observables for tracking the size of the undo stack.
-
-The code required to add these features is very simple, but needs some
+The code required to add this feature is very simple, but needs some
 explanation, so we'll show it to you in a bit.
-
-### Common object-management utilities
-
-A few utilities for working with JavaScript objects are provided.
-In addition to `clone()`, which does a deep copy of an object, you
-also get property-management tools like `lookup()`, `assign()` and
-`cloneAndAssign()`.
 
 
 # Learn more

@@ -1,12 +1,10 @@
 var components = [
         require('./actions'),
         require('./store'),
-        require('./object'),
         require('./model'),
         require('./react'),
         require('./subscribe'),
-        require('./waitable'),
-        require('./undoable')
+        require('./waitable')
     ],
     output = {};
 

@@ -1,5 +1,4 @@
-let deepAssign = require('deep-assign'),
-    object     = require('./object'),
+let assignDeep = require('assign-deep'),
     actions    = require('./actions'),
     counter    = 1;
 
@@ -37,18 +36,14 @@ function makeWaitable(model) {
 
         // merge our initial state into the parent reducer's
         if (typeof state === 'undefined')
-            state = deepAssign({}, originalReducer(state, action), initialState);
+            state = assignDeep({}, originalReducer(state, action), initialState);
 
-        if (action.type === actionCodeWait) {
-            state = object.clone(state);
-            state.waiting = true;
-            return state;
-        }
-        if (action.type === actionCodeStopWaiting) {
-            state = object.clone(state);
-            state.waiting = false;
-            return state;
-        }
+        if (action.type === actionCodeWait)
+            return assignDeep({}, state, {waiting: true});
+
+        if (action.type === actionCodeStopWaiting)
+            return assignDeep({}, state, {waiting: false});
+
         return originalReducer(state, action);
     };
 }

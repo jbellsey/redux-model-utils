@@ -1,5 +1,5 @@
 var store  = require('./store').getStore,
-    object = require('./object');
+    lookup = require('./lookup');
 
 /**
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
@@ -29,7 +29,7 @@ function subscribe(selector, cb, opts = {}) {
 
     var previousValue,
         equals  = opts.equals || ((a, b) => a === b),
-        val     = () => object.lookup(store().getState(), selector),
+        val     = () => lookup(store().getState(), selector),
         handler = () => {
             let currentValue = val();
             if (!equals(previousValue, currentValue)) {

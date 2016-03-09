@@ -2,7 +2,7 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var object = require('./object'),
+var lookup = require('./lookup'),
     store = require('./store');
 
 // create direct getters for accessing the underlying model: "model.data.property"
@@ -17,7 +17,7 @@ function buildAccessors(model) {
         Object.defineProperty(data, key, {
             get: function get() {
                 var state = store.getStore().getState();
-                return object.lookup(state, model.selectors[key]);
+                return lookup(state, model.selectors[key]);
             }
         });
     });
@@ -27,7 +27,7 @@ function buildAccessors(model) {
         get: function get() {
             var state = store.getStore().getState();
             if (_typeof(state[model.name]) === 'object') state = state[model.name];
-            return object.clone(state);
+            return state;
         }
     });
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-var components = [require('./actions'), require('./store'), require('./object'), require('./model'), require('./react'), require('./subscribe'), require('./waitable'), require('./undoable')],
+var components = [require('./actions'), require('./store'), require('./model'), require('./react'), require('./subscribe'), require('./waitable')],
     output = {};
 
 // shallow merge. all APIs are exposed at the top level

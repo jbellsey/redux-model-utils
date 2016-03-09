@@ -1,4 +1,5 @@
-var RU    = require('../src/index'),
+var clone = require('clone'),
+    RU    = require('../src/index'),
     store = require('./_store');
 
 describe('MODEL module:', () => {
@@ -32,7 +33,7 @@ describe('DATA ACCESSORS module:', () => {
         modelSeed = {
             name: 'accessors-model',
             actionMap: {},
-            initialState: RU.clone(initial),
+            initialState: clone(initial),
             selectors: {
                 color: 'prefs.color',
                 size: 'prefs.size'

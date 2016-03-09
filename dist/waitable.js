@@ -2,8 +2,7 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var deepAssign = require('deep-assign'),
-    object = require('./object'),
+var assignDeep = require('assign-deep'),
     actions = require('./actions'),
     counter = 1;
 
@@ -40,18 +39,12 @@ function makeWaitable(model) {
     model.reducer = function (state, action) {
 
         // merge our initial state into the parent reducer's
-        if (typeof state === 'undefined') state = deepAssign({}, originalReducer(state, action), initialState);
+        if (typeof state === 'undefined') state = assignDeep({}, originalReducer(state, action), initialState);
 
-        if (action.type === actionCodeWait) {
-            state = object.clone(state);
-            state.waiting = true;
-            return state;
-        }
-        if (action.type === actionCodeStopWaiting) {
-            state = object.clone(state);
-            state.waiting = false;
-            return state;
-        }
+        if (action.type === actionCodeWait) return assignDeep({}, state, { waiting: true });
+
+        if (action.type === actionCodeStopWaiting) return assignDeep({}, state, { waiting: false });
+
         return originalReducer(state, action);
     };
 }

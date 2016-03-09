@@ -1,5 +1,7 @@
-var RU    = require('../src/index'),
-    store = require('./_store');
+var assignDeep  = require('assign-deep'),
+    clone       = require('clone'),
+    RU          = require('../src/index'),
+    store       = require('./_store');
 
 describe('SUBSCRIBE module:', () => {
 
@@ -20,11 +22,11 @@ describe('SUBSCRIBE module:', () => {
             reducer = (state, action = {}) => {
 
                 if (!state)
-                    state = RU.clone(initial);
+                    state = clone(initial);
 
                 switch (action.type) {
                     case 'setColor':
-                        return RU.cloneAndAssign(state, 'prefs.color', action.col);
+                        return assignDeep({}, state, {prefs: {color: action.col}});
 
                     default:
                         return state;
@@ -39,7 +41,7 @@ describe('SUBSCRIBE module:', () => {
 
         beforeEach(() => {
             modelSeed.name = `subscribe-model-${counter++}`;
-            model = RU.modelBuilder(RU.clone(modelSeed));
+            model = RU.modelBuilder(clone(modelSeed));
         });
 
     //-----------

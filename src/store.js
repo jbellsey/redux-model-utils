@@ -36,6 +36,6 @@ module.exports = {
 
     buildReducerMap,
 
-    setStore: (s) => store = s,
-    getStore: ()  => store
+    setStore: s  => store = s,
+    getStore: () => store
 };

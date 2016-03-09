@@ -1,5 +1,7 @@
-var RU    = require('../src/index'),
-    store = require('./_store'),
+var clone       = require('clone'),
+    assignDeep  = require('assign-deep'),
+    RU          = require('../src/index'),
+    store       = require('./_store'),
     mockStore;
 
 describe('ACTIONS module:', () => {
@@ -69,31 +71,26 @@ describe('ACTION MAP module:', () => {
         modelSeed = {
             actionMap: {
                 makeBlue: {
-                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'blue')
+                    reducer: state => assignDeep({}, state, {prefs: {color: 'blue'}})
                 },
                 makeAnyColor: {
                     params: 'color',
-                    reducer: (state, action) => RU.cloneAndAssign(state, selectors.color, action.color)
+                    reducer: (state, action) => assignDeep({}, state, {prefs: {color: action.color}})
                 },
                 changeColorAndSize: {
                     params: ['color', 'size'],
-                    reducer: (state, action) => {
-                        var s = RU.clone(state);
-                        s.prefs.color = action.color;
-                        s.prefs.size  = action.size;
-                        return s;
-                    }
+                    reducer: (state, action) => assignDeep({}, state, {prefs: {color: action.color, size: action.size}})
                 },
                 timer100: {
                     async: () => new Promise(resolve => setTimeout(resolve, 10))
                 },
                 privateAction: {
                     private: true,
-                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'peacock')
+                    reducer: state => assignDeep({}, state, {prefs: {color: 'peacock'}})
                 },
                 anotherPrivateAction: {
                     private: true,
-                    reducer: state => RU.cloneAndAssign(state, selectors.color, 'sandstone')
+                    reducer: state => assignDeep({}, state, {prefs: {color: 'sandstone'}})
                 },
                 privateAsync: {
                     private: true,
@@ -109,7 +106,7 @@ describe('ACTION MAP module:', () => {
 
         beforeEach(() => {
             modelSeed.name = `test-model-${counter++}`;
-            model = RU.modelBuilder(RU.clone(modelSeed));
+            model = RU.modelBuilder(clone(modelSeed));
             mockStore = store.resetStore(model);
         });
 

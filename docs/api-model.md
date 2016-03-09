@@ -57,10 +57,9 @@ full example below.
 Read the full documentation on how to build actions and action maps
 [here](actions.md).
 
-You can optionally pass in some **magic triggers**. At present, there are two:
-`waitable` and `undoable`. Setting these flags will install some custom actions
+You can optionally pass in a **magic trigger**. At present, there is only one:
+`waitable`. Setting this flags will install some custom actions
 and selectors on your model; details [here](magic.md).
-
 
 
 #### modelBuilder(model)
@@ -79,10 +78,13 @@ module.exports = reduxModelUtils.modelBuilder({
 
 #### makeActionCreator(type, ...argNames)
 
-You're probably already doing this. See [the docs](http://rackt.org/redux/docs/basics/Actions.html).
+You've probably already done this if you've used Redux before.
+See [the docs](http://rackt.org/redux/docs/basics/Actions.html).
 This version is not any different. Note that actions invoked this way are dispatched for you.
 If you need a different way to dispatch, or if you need action objects without a built-in
 dispatch, just don't use this tool.
+
+And if you're using an action map, you won't need this tool (or the next one).
 
 ```javascript
 let actions = {

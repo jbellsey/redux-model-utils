@@ -2,8 +2,8 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var deepAssign = require('deep-assign'),
-    lookup = require('./object').lookup;
+var assignDeep = require('assign-deep'),
+    lookup = require('./lookup');
 
 // builds a function that returns a new map of selectors.
 // the new map is scoped to the model name. used for setting
@@ -41,7 +41,7 @@ function reactify(model) {
     // the user can request additional maps be created. each key in the "propsMap"
     // field on the model is converted into a new set of reactSelectors:
     //
-    //  model.propsMaps = {key:selectors}
+    //  model.propsMaps = {key1: selectors, key2: moreSelectors}
     //
     model.propsMaps = Object.keys(model.propsMaps || {}).reduce(function (newPropsMaps, oneMapName) {
         newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
@@ -66,7 +66,7 @@ function mergeReactSelectors() {
             // otherwise, it's a propsMap that has already been reactified
             if (oneObject._magic_rmu) oneObject = oneObject.reactSelectors(state);
 
-            deepAssign(props, oneObject);
+            assignDeep(props, oneObject);
         });
         return props;
     };
@@ -77,7 +77,7 @@ module.exports = {
     // these exports are only available inside this library
     reactify: reactify,
 
-    // and these are visible to consumers
+    // and these are visible to library users
     publicAPI: {
         mergeReactSelectors: mergeReactSelectors
     }
