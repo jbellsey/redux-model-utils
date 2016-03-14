@@ -1,6 +1,6 @@
 {
   "name": "redux-model-utils",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Utilities and patterns for models using redux.js",
   "main": "dist/index.js",
   "scripts": {
