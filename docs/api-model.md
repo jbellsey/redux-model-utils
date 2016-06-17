@@ -95,8 +95,7 @@ let actions = {
 
 #### makeAsyncAction(cb, ...argNames)
 
-This utility enables easy async actions. **Note**: if you use this tool, you must
-also install and configure [redux-thunk](https://github.com/gaearon/redux-thunk).
+This utility enables easy async actions..
 
 The callback's signature is `function(args) {}`, where `args` is an object map of the
 arguments you indicate in `argNames`. The callback's return value is passed back

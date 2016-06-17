@@ -30,6 +30,7 @@ var store = require('./store').getStore,
 function subscribe(selector, cb) {
     var opts = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
 
+
     var previousValue,
         equals = opts.equals || function (a, b) {
         return a === b;

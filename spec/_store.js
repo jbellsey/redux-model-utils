@@ -1,8 +1,12 @@
 var clone       = require('clone'),
     redux       = require('redux'),
-    thunk       = require('redux-thunk'),
+    thunk       = require('redux-thunk').default,
     RU          = require('../src/index'),
     middlewares = [thunk];
+
+// TODO: this store has gotten out of hand. it should be
+// rebuilt using https://github.com/arnaudbenard/redux-mock-store
+// (tests will need reconfiguration as well)
 
 /*
  model   => can be null, or a packaged model, or an array of packaged models

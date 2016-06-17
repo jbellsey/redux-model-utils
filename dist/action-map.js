@@ -37,7 +37,7 @@ function parseActionMap(model) {
         var actionDetails = model.actionMap[key],
             code = model.name + '_' + key,
             params = actionDetails.params,
-            putHere = undefined;
+            putHere = void 0;
 
         if (actionDetails.private) {
             putHere = listOfPrivateActions;
@@ -49,15 +49,20 @@ function parseActionMap(model) {
         // add an action-creator. async is handled differently
         if (actionDetails.async) {
             putHere[key] = actions.makeAsyncAction.apply(actions, [actionDetails.async].concat(_toConsumableArray(params)));
-        } else {
-            putHere[key] = actions.makeActionCreator.apply(actions, [code].concat(_toConsumableArray(params)));
-
-            // install the reducer
-            listOfReducers.push({
-                code: code,
-                fnc: actionDetails.reducer
-            });
         }
+        // thunk is a synonym for async. used when the action isn't actually async, but
+        // has to fire off other actions
+        else if (actionDetails.thunk) {
+                putHere[key] = actions.makeAsyncAction.apply(actions, [actionDetails.thunk].concat(_toConsumableArray(params)));
+            } else {
+                putHere[key] = actions.makeActionCreator.apply(actions, [code].concat(_toConsumableArray(params)));
+
+                // install the reducer
+                listOfReducers.push({
+                    code: code,
+                    fnc: actionDetails.reducer
+                });
+            }
     });
 
     // the output of the actionMap: public actions, private actions, and reducer
@@ -66,6 +71,7 @@ function parseActionMap(model) {
     model.reducer = function () {
         var state = arguments.length <= 0 || arguments[0] === undefined ? model.initialState : arguments[0];
         var action = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
 
         var matcher = function matcher(reducer) {
             return reducer.code === action.type;

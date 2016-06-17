@@ -136,6 +136,42 @@ model.actions.save(44).then(closeForm);     // chain the returned promise
 model.actions.timer1000().then(smile);
 ```
 
+### Thunks vs. async actions
+
+Sometimes you will have an action which isn't strictly asynchronous,
+but needs to be written as a thunk instead of as an action-creator.
+Redux does not allow you to fire an action from within a reducer, so
+if you need to execute multiple actions from one method, you have to
+use an async action rather than a normal action-creator.
+
+If your async action isn't truly asynchronous, you're welcome to
+use the synonym `thunk` in your action map. This is purely for clarity;
+there is no functional difference from using the `async` option.
+
+```javascript
+let actionMap = {
+
+    // synchronous actions
+    storeUserData: {
+        params: 'data',
+        reducer: (state, params) => {/* ... */}
+    },
+    storeDeviceData: {
+        params: 'data',
+        reducer: (state, params) => {/* ... */}
+    },
+
+    // thunk. not async.
+    storeAllData: {
+        params: ['userData', 'deviceData'],
+        thunk: params => {
+            model.actions.storeUserData(params.userData);
+            model.actions.storeDeviceData(params.deviceData);
+        }
+    }
+};
+```
+
 ### About action codes
 
 The action codes for actions built from an action map are private.

@@ -52,6 +52,11 @@ function parseActionMap(model) {
         if (actionDetails.async) {
             putHere[key] = actions.makeAsyncAction(actionDetails.async, ...params);
         }
+        // thunk is a synonym for async. used when the action isn't actually async, but
+        // has to fire off other actions
+        else if (actionDetails.thunk) {
+            putHere[key] = actions.makeAsyncAction(actionDetails.thunk, ...params);
+        }
         else {
             putHere[key] = actions.makeActionCreator(code, ...params);
 

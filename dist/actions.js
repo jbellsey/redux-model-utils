@@ -58,6 +58,7 @@ function makeAsyncAction(cb) {
         //
         var argObject = makeAction(null, argNames, args),
 
+
         // this thunk is sent to the dispatcher. it will only work properly if the user
         // has installed and configured the [redux-thunk] library
         //

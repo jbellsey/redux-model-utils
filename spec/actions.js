@@ -84,6 +84,9 @@ describe('ACTION MAP module:', () => {
                 timer100: {
                     async: () => new Promise(resolve => setTimeout(resolve, 10))
                 },
+                timer100_thunk: {
+                    thunk: () => new Promise(resolve => setTimeout(resolve, 10))
+                },
                 privateAction: {
                     private: true,
                     reducer: state => assignDeep({}, state, {prefs: {color: 'peacock'}})
@@ -128,6 +131,10 @@ describe('ACTION MAP module:', () => {
 
         it('runs an async action', done => {
             model.actions.timer100().then(done);
+        });
+
+        it('runs an async action with the "thunk" option', done => {
+            model.actions.timer100_thunk().then(done);
         });
 
         it('keeps private actions separate', () => {

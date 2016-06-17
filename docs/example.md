@@ -109,9 +109,9 @@ import `redux-model-utils`; just the relevant model.
 Here's a React component that uses the model. A vanilla version is shown next.
 
 ```javascript
-const React     = require('react'),
-      {connect} = require('react-redux'),
-      geoModel  = require('./models/geo');
+import React     from 'react';
+import {connect} from 'react-redux';
+import geoModel  from './models/geo';
 
 // you can use ES6 classes if you prefer
 let MyGeoComponent = React.createClass({
@@ -184,12 +184,12 @@ The one exception: if your app does not use async actions, you can omit the
 installation and setup of `redux-thunk`.
 
 ```javascript
-let redux           = require('redux'),
-    thunk           = require('redux-thunk'),
-    reduxModelUtils = require('redux-model-utils'),
+import redux           from 'redux';
+import thunk           from 'redux-thunk';
+import reduxModelUtils from 'redux-model-utils';
 
     // THIS IS NEW: build an array with all of your models
-    models = [
+let models = [
         require('./models/appdata'),
         require('./models/todos')
         // ... etc ...
