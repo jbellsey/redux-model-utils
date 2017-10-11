@@ -3,8 +3,7 @@ var components = [
         require('./store'),
         require('./model'),
         require('./react'),
-        require('./subscribe'),
-        require('./waitable')
+        require('./subscribe')
     ],
     output = {};
 

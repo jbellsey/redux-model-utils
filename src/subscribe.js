@@ -1,5 +1,5 @@
-var store  = require('./store').getStore,
-    lookup = require('./lookup');
+import {getStore} from './store';
+import lookup from './lookup';
 
 /**
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
@@ -25,30 +25,26 @@ var store  = require('./store').getStore,
  * Passes back the return from store.subscribe() -- i.e., the unsubscribe function
  *
  */
-function subscribe(selector, cb, opts = {}) {
+export default function subscribe(selector, cb, opts = {}) {
 
-    var previousValue,
-        equals  = opts.equals || ((a, b) => a === b),
-        val     = () => lookup(store().getState(), selector),
-        handler = () => {
-            let currentValue = val();
-            if (!equals(previousValue, currentValue)) {
-                let temp = previousValue;
-                previousValue = currentValue;
-                cb(currentValue, temp);
-            }
-        };
+  let previousValue,
+      equals  = opts.equals || ((a, b) => a === b),
+      val     = () => lookup(getStore().getState(), selector),
+      handler = () => {
+        let currentValue = val();
+        if (!equals(previousValue, currentValue)) {
+          let temp = previousValue;
+          previousValue = currentValue;
+          cb(currentValue, temp);
+        }
+      };
 
-    // normally, we invoke the callback on startup, so that it gets
-    // an initial value. you can suppress this with opts.noInit
-    //
-    if (!opts.noInit)
-        cb(previousValue = val());
+  // normally, we invoke the callback on startup, so that it gets
+  // an initial value. you can suppress this with opts.noInit
+  //
+  if (!opts.noInit)
+    cb(previousValue = val());
 
-    // return the unsubscribe function to the caller
-    return store().subscribe(handler);
+  // return the unsubscribe function to the caller
+  return getStore().subscribe(handler);
 }
-
-module.exports = {
-    subscribe
-};

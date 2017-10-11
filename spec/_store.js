@@ -1,8 +1,9 @@
-var clone       = require('clone'),
-    redux       = require('redux'),
-    thunk       = require('redux-thunk').default,
-    RU          = require('../src/index'),
-    middlewares = [thunk];
+import clone from 'clone';
+import {applyMiddleware, combineReducers} from 'redux';
+import thunk from 'redux-thunk';
+import {setStore, buildReducerMap} from '../src/store';
+
+let middlewares = [thunk];
 
 // TODO: this store has gotten out of hand. it should be
 // rebuilt using https://github.com/arnaudbenard/redux-mock-store
@@ -24,191 +25,186 @@ var clone       = require('clone'),
  */
 function mockStore(models, state, expectedActions, onLastAction) {
 
-    var currentScope           = null,    // or a string (model name)
-        expectedActionsIsArray = Array.isArray(expectedActions),
+  var currentScope           = null,    // or a string (model name)
+      expectedActionsIsArray = Array.isArray(expectedActions),
 
-        local_setScope         = newScope => {
-            let oldScope = currentScope;
-            currentScope = newScope;
-            return oldScope;
-        };
+      local_setScope         = newScope => {
+        let oldScope = currentScope;
+        currentScope = newScope;
+        return oldScope;
+      };
 
-    if (!expectedActionsIsArray && typeof expectedActions === 'number') {
-        if (expectedActions < 0)
-            expectedActions = null;
-    }
-    if (typeof onLastAction !== 'undefined' && typeof onLastAction !== 'function') {
-        throw new Error('onLastAction should either be undefined or function.');
-    }
+  if (!expectedActionsIsArray && typeof expectedActions === 'number') {
+    if (expectedActions < 0)
+      expectedActions = null;
+  }
+  if (typeof onLastAction !== 'undefined' && typeof onLastAction !== 'function') {
+    throw new Error('onLastAction should either be undefined or function.');
+  }
 
-    // ensure we have an array of models to work with, even if only one is provided
-    if (!models)
-        models = [];
-    else if (!Array.isArray(models))
-        models = [models];
+  // ensure we have an array of models to work with, even if only one is provided
+  if (!models)
+    models = [];
+  else if (!Array.isArray(models))
+    models = [models];
 
-    // should we get a default state from the models?
-    let addDefaultState = !state;
-    if (!state)
-        state = {};
+  // should we get a default state from the models?
+  let addDefaultState = !state;
+  if (!state)
+    state = {};
 
-    // patch every action to ensure that when it's called we get scoped correctly
-    models.forEach(model => {
-        let newActions = {};
-        Object.keys(model.actions).forEach(oneActionKey => {
-            if (typeof model.actions[oneActionKey] === 'function') {
-                let oldAction = model.actions[oneActionKey];
-                newActions[oneActionKey] = (...args) => {
-                    let oldScope = local_setScope(model.name),
-                        retVal   = oldAction(...args);
-                    local_setScope(oldScope);
-                    return retVal;
-                }
-            }
-        });
-        model.actions = newActions;
-
-        if (addDefaultState)
-            state[model.name] = clone(model.reducer(undefined, {}));
+  // patch every action to ensure that when it's called we get scoped correctly
+  models.forEach(model => {
+    let newActions = {};
+    Object.keys(model.actions).forEach(oneActionKey => {
+      if (typeof model.actions[oneActionKey] === 'function') {
+        let oldAction = model.actions[oneActionKey];
+        newActions[oneActionKey] = (...args) => {
+          let oldScope = local_setScope(model.name),
+              retVal   = oldAction(...args);
+          local_setScope(oldScope);
+          return retVal;
+        }
+      }
     });
+    model.actions = newActions;
 
-    function mockStoreWithoutMiddleware() {
-        var listeners = [];
+    if (addDefaultState)
+      state[model.name] = clone(model.reducer(undefined, {}));
+  });
 
-        function local_getState(scope) {
+  function mockStoreWithoutMiddleware() {
+    var listeners = [];
 
-            if (!scope)
-                scope = currentScope;
+    function local_getState(scope) {
 
-            // scope the state to the model name
-            if (scope)
-                return state[scope];
-            return state;
-        }
+      if (!scope)
+        scope = currentScope;
 
-        function local_setState(s, scope) {
-
-            if (!scope)
-                scope = currentScope;
-
-            s = clone(s);
-            if (scope)
-                state[scope] = s;
-            else
-                state = s;
-        }
-
-        function local_isLastAction() {
-            if (expectedActionsIsArray)
-                return expectedActions.length === 0;
-            else if (expectedActions != null)
-                return expectedActions === 0;
-            return false;
-        }
-
-        return {
-            // external consumers can't customize scope directly;
-            // must use setScope (below)
-            //
-            // pass UNDEFINED to get the FULL store, unscoped
-            // pass a SPECIFIC model to get its scope
-            //
-            getState: model => {
-
-                var useFullScope = (model === undefined),
-                    oldScope;
-
-                if (useFullScope)
-                    oldScope = local_setScope(null);
-
-                let retVal = local_getState(model ? model.name : null);
-
-                if (useFullScope)
-                    local_setScope(oldScope);
-                return retVal;
-            },
-
-            // use this only during testing accessors.
-            //      lastScope = store.forceFullScope(true);
-            //      expect(model.data.color).toBe('red');
-            //      store.forceFullScope(lastScope);
-            //
-            forceFullScope: val => {
-                if (val === true) {
-                    let oldModel = models[0];
-                    models[0] = null;
-                    return oldModel;
-                }
-                else
-                    models[0] = val;
-            },
-
-            dispatch(action) {
-                var expectedAction;
-
-                if (expectedActionsIsArray) {
-                    expectedAction = expectedActions.shift();
-                    expect(action).toEqual(expectedAction);
-                }
-                else if (expectedAction != null) {
-                    if (--expectedActions < 0)
-                        fail('expectedActions integer value too low. you called dispatch too many times');
-                }
-
-                // let all models reduce our action
-                models.forEach(oneModel => {
-                    let newState = oneModel.reducer(local_getState(oneModel.name), action);
-                    local_setState(newState, oneModel.name);
-                });
-
-                if (onLastAction && local_isLastAction()) {
-                    onLastAction();
-                }
-                // tell subscribers
-                listeners.slice().forEach(listener => listener());
-
-                return action;
-            },
-
-            subscribe: listener => {
-                listeners.push(listener);
-
-                return function unsubscribe() {
-                    var index = listeners.indexOf(listener);
-                    listeners.splice(index, 1);
-                }
-            }
-        }
+      // scope the state to the model name
+      if (scope)
+        return state[scope];
+      return state;
     }
 
-    var createStoreWithMiddleware = redux.applyMiddleware(...middlewares)(mockStoreWithoutMiddleware);
+    function local_setState(s, scope) {
 
-    // prepare an object for combineReducers. this is of the form {modelName: modelReducer, ...},
-    // because that's what we need for combineReducers()
-    //
-    var allReducers = RU.buildReducerMap(models);
+      if (!scope)
+        scope = currentScope;
 
-    // unify all models into a single reducer
-    var masterReducer = redux.combineReducers(allReducers);
+      s = clone(s);
+      if (scope)
+        state[scope] = s;
+      else
+        state = s;
+    }
 
-    return createStoreWithMiddleware(masterReducer);
+    function local_isLastAction() {
+      if (expectedActionsIsArray)
+        return expectedActions.length === 0;
+      else if (expectedActions != null)
+        return expectedActions === 0;
+      return false;
+    }
+
+    return {
+      // external consumers can't customize scope directly;
+      // must use setScope (below)
+      //
+      // pass UNDEFINED to get the FULL store, unscoped
+      // pass a SPECIFIC model to get its scope
+      //
+      getState: model => {
+
+        var useFullScope = (model === undefined),
+            oldScope;
+
+        if (useFullScope)
+          oldScope = local_setScope(null);
+
+        let retVal = local_getState(model ? model.name : null);
+
+        if (useFullScope)
+          local_setScope(oldScope);
+        return retVal;
+      },
+
+      // use this only during testing accessors.
+      //      lastScope = store.forceFullScope(true);
+      //      expect(model.data.color).toBe('red');
+      //      store.forceFullScope(lastScope);
+      //
+      forceFullScope: val => {
+        if (val === true) {
+          let oldModel = models[0];
+          models[0] = null;
+          return oldModel;
+        }
+        else
+          models[0] = val;
+      },
+
+      dispatch(action) {
+        var expectedAction;
+
+        if (expectedActionsIsArray) {
+          expectedAction = expectedActions.shift();
+          expect(action).toEqual(expectedAction);
+        }
+        else if (expectedAction != null) {
+          if (--expectedActions < 0)
+            fail('expectedActions integer value too low. you called dispatch too many times');
+        }
+
+        // let all models reduce our action
+        models.forEach(oneModel => {
+          let newState = oneModel.reducer(local_getState(oneModel.name), action);
+          local_setState(newState, oneModel.name);
+        });
+
+        if (onLastAction && local_isLastAction()) {
+          onLastAction();
+        }
+        // tell subscribers
+        listeners.slice().forEach(listener => listener());
+
+        return action;
+      },
+
+      subscribe: listener => {
+        listeners.push(listener);
+
+        return function unsubscribe() {
+          var index = listeners.indexOf(listener);
+          listeners.splice(index, 1);
+        }
+      }
+    }
+  }
+
+  var createStoreWithMiddleware = applyMiddleware(...middlewares)(mockStoreWithoutMiddleware);
+
+  // prepare an object for combineReducers. this is of the form {modelName: modelReducer, ...},
+  // because that's what we need for combineReducers()
+  //
+  var allReducers = buildReducerMap(models);
+
+  // unify all models into a single reducer
+  var masterReducer = combineReducers(allReducers);
+
+  return createStoreWithMiddleware(masterReducer);
 }
 
-function resetStore(...args) {
+export default function resetStore(...args) {
 
-    var store = mockStore(...args);
+  var store = mockStore(...args);
 
-    // allow tests like this:
-    //  expect(mockStore.dispatch).toHaveBeenCalled();
-    //  expect(mockStore.dispatch.calls.count()).toEqual(2);
-    //
-    spyOn(store, 'dispatch').and.callThrough();
+  // allow tests like this:
+  //  expect(mockStore.dispatch).toHaveBeenCalled();
+  //  expect(mockStore.dispatch.calls.count()).toEqual(2);
+  //
+  spyOn(store, 'dispatch').and.callThrough();
 
-    RU.setStore(store);
-    return store;
+  setStore(store);
+  return store;
 }
-
-
-module.exports = {
-    resetStore
-};

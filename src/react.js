@@ -1,5 +1,5 @@
-var assignDeep = require('assign-deep'),
-    lookup     = require('./lookup');
+import assignDeep from 'assign-deep';
+import lookup from './lookup';
 
 // builds a function that returns a new map of selectors.
 // the new map is scoped to the model name. used for setting
@@ -7,72 +7,72 @@ var assignDeep = require('assign-deep'),
 //
 function externalizeSelectors(selectors, modelName) {
 
-    return state => {
+  return state => {
 
-        return Object.keys(selectors).reduce((map, sel) => {
+    return Object.keys(selectors).reduce((map, sel) => {
 
-            var thisSelector = selectors[sel],
-                val, subState;
+      var thisSelector = selectors[sel],
+          val, subState;
 
-            if (typeof thisSelector === 'function') {
-                subState = state[modelName];
-                val = thisSelector((typeof subState === 'object') ? subState : state);
-            }
-            else if (typeof thisSelector === 'string') {
-                subState = state[modelName];
-                val = lookup((typeof subState === 'object') ? subState : state, thisSelector);
-            }
-            map[sel] = val;
+      if (typeof thisSelector === 'function') {
+        subState = state[modelName];
+        val = thisSelector((typeof subState === 'object') ? subState : state);
+      }
+      else if (typeof thisSelector === 'string') {
+        subState = state[modelName];
+        val = lookup((typeof subState === 'object') ? subState : state, thisSelector);
+      }
+      map[sel] = val;
 
-            return map;
-        }, {});
-    };
+      return map;
+    }, {});
+  };
 }
 
-function reactify(model) {
+export function reactify(model) {
 
-    // the default map of selectors to props
-    model.reactSelectors = externalizeSelectors(model.selectors || {}, model.name);
+  // the default map of selectors to props
+  model.reactSelectors = externalizeSelectors(model.selectors || {}, model.name);
 
-    // the user can request additional maps be created. each key in the "propsMap"
-    // field on the model is converted into a new set of reactSelectors:
-    //
-    //  model.propsMaps = {key1: selectors, key2: moreSelectors}
-    //
-    model.propsMaps = Object.keys(model.propsMaps || {}).reduce((newPropsMaps, oneMapName) => {
-        newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
-        return newPropsMaps;
-    }, {});
+  // the user can request additional maps be created. each key in the "propsMap"
+  // field on the model is converted into a new set of reactSelectors:
+  //
+  //  model.propsMaps = {key1: selectors, key2: moreSelectors}
+  //
+  model.propsMaps = Object.keys(model.propsMaps || {}).reduce((newPropsMaps, oneMapName) => {
+    newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
+    return newPropsMaps;
+  }, {});
 }
 
 // merge the reactSelectors from multiple models for use in a single connected component.
 // duplicate keys will be last-in priority. accepts a list of either models or reactified maps.
 //
-function mergeReactSelectors(...objects) {
+export function mergeReactSelectors(...objects) {
 
-    return state => {
+  return state => {
 
-        let props = {};
-        (objects || []).forEach(oneObject => {
+    let props = {};
+    (objects || []).forEach(oneObject => {
 
-            // is it a model? then pull its already-prepared reactSelectors.
-            // otherwise, it's a propsMap that has already been reactified
-            if (oneObject._magic_rmu)
-                oneObject = oneObject.reactSelectors(state);
+      // is it a model? then pull its already-prepared reactSelectors.
+      // otherwise, it's a propsMap that has already been reactified
+      if (oneObject._magic_rmu)
+        oneObject = oneObject.reactSelectors(state);
 
-            assignDeep(props, oneObject);
-        });
-        return props;
-    };
+      assignDeep(props, oneObject);
+    });
+    return props;
+  };
 }
 
-module.exports = {
-
-    // these exports are only available inside this library
-    reactify,
-
-    // and these are visible to library users
-    publicAPI: {
-        mergeReactSelectors
-    }
-};
+// module.exports = {
+//
+//     // these exports are only available inside this library
+//     reactify,
+//
+//     // and these are visible to library users
+//     publicAPI: {
+//         mergeReactSelectors
+//     }
+// };

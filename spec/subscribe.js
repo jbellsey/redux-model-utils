@@ -1,11 +1,13 @@
-var assignDeep  = require('assign-deep'),
-    clone       = require('clone'),
-    RU          = require('../src/index'),
-    store       = require('./_store');
+import clone from 'clone';
+import assignDeep from 'assign-deep';
+import resetStore from './_store';
+import {makeActionCreator} from '../src/actions';
+import modelBuilder from '../src/model';
+import subscribe from '../src/subscribe';
 
 describe('SUBSCRIBE module:', () => {
 
-        var setColor = RU.makeActionCreator('setColor', 'col'),
+        var setColor = makeActionCreator('setColor', 'col'),
             counter  = 0,
             initial  = {
                 userID: 0,
@@ -41,7 +43,7 @@ describe('SUBSCRIBE module:', () => {
 
         beforeEach(() => {
             modelSeed.name = `subscribe-model-${counter++}`;
-            model = RU.modelBuilder(clone(modelSeed));
+            model = modelBuilder(clone(modelSeed));
         });
 
     //-----------
@@ -49,7 +51,7 @@ describe('SUBSCRIBE module:', () => {
     it('runs a basic reducer properly', () => {
 
         var expected  = [{ type:'setColor', col:'green' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('green');
                 expect(state.prefs.size).toBe('large');
@@ -63,7 +65,7 @@ describe('SUBSCRIBE module:', () => {
     it('runs a raw subscriber properly (not using our wrapper)', () => {
 
         var expected  = [{ type:'setColor', col:'yellow' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('yellow');
             }),
@@ -78,13 +80,13 @@ describe('SUBSCRIBE module:', () => {
     it('runs our custom subscriber properly', () => {
 
         var expected  = [{ type:'setColor', col:'gray' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('gray');
             }),
             invocationCount = 0;
 
-        RU.subscribe('prefs.color', () => ++invocationCount);
+        subscribe('prefs.color', () => ++invocationCount);
         setColor('gray');
         expect(invocationCount).toBe(1);
     });
@@ -92,13 +94,13 @@ describe('SUBSCRIBE module:', () => {
     it('runs properly with a function selector', () => {
 
         var expected  = [{ type:'setColor', col:'teal' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('teal');
             }),
             invocationCount = 0;
 
-        RU.subscribe(model.selectors.colorFnc, () => ++invocationCount);
+        subscribe(model.selectors.colorFnc, () => ++invocationCount);
         setColor('teal');
         expect(invocationCount).toBe(2);
     });
@@ -106,13 +108,13 @@ describe('SUBSCRIBE module:', () => {
     it('respects "noInit" flag', () => {
 
         var expected  = [{ type:'setColor', col:'purple' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('purple');
             }),
             invocationCount = 0;
 
-        RU.subscribe('prefs.color', () => ++invocationCount, {noInit:1});
+        subscribe('prefs.color', () => ++invocationCount, {noInit:1});
         setColor('purple');
         expect(invocationCount).toBe(0);
     });
@@ -120,12 +122,12 @@ describe('SUBSCRIBE module:', () => {
     it('receives the correct value', () => {
 
         var expected  = [{ type:'setColor', col:'mint' }],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('mint');
             });
 
-        RU.subscribe('prefs.color', newColor => expect(newColor).toBe('mint'), {noInit:1});
+        subscribe('prefs.color', newColor => expect(newColor).toBe('mint'), {noInit:1});
         setColor('mint');
     });
 
@@ -134,15 +136,15 @@ describe('SUBSCRIBE module:', () => {
 
         var oneAction = { type:'setColor', col:'pink' },
             expected  = [oneAction, oneAction, oneAction],
-            mockStore = store.resetStore(model, null, expected, () => {
+            mockStore = resetStore(model, null, expected, () => {
                 var state = mockStore.getState(model);
                 expect(state.prefs.color).toBe('pink');
             }),
             sizeInvocations = 0,
             colorInvocations = 0;
 
-        RU.subscribe('prefs.size',  () => ++sizeInvocations);
-        RU.subscribe('prefs.color', () => ++colorInvocations);
+        subscribe('prefs.size',  () => ++sizeInvocations);
+        subscribe('prefs.color', () => ++colorInvocations);
         setColor('pink');
         setColor('pink');
         setColor('pink');
@@ -153,10 +155,10 @@ describe('SUBSCRIBE module:', () => {
 
     it('runs custom equality tests', () => {
 
-        var mockStore = store.resetStore(model),
+        var mockStore = resetStore(model),
             invokeCt = 0;
 
-        RU.subscribe(
+        subscribe(
             model.name + '.prefs',
             newPrefs => {
                 ++invokeCt;

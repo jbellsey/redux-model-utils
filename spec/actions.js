@@ -1,8 +1,10 @@
-var clone       = require('clone'),
-    assignDeep  = require('assign-deep'),
-    RU          = require('../src/index'),
-    store       = require('./_store'),
-    mockStore;
+import clone from 'clone';
+import assignDeep from 'assign-deep';
+import resetStore from './_store';
+import {makeActionCreator, makeAsyncAction} from '../src/actions';
+import modelBuilder from '../src/model';
+
+let mockStore;
 
 describe('ACTIONS module:', () => {
 
@@ -11,9 +13,9 @@ describe('ACTIONS module:', () => {
     it('makes action creators', () => {
 
         var expected  = [{ type:'incr', value:4 }],
-            incr      = RU.makeActionCreator('incr', 'value');
+            incr      = makeActionCreator('incr', 'value');
 
-        mockStore = store.resetStore(null, {}, expected);
+        mockStore = resetStore(null, {}, expected);
 
         incr(4);    // triggers an expect inside the dispatch mock
         expect(mockStore.dispatch).toHaveBeenCalled();
@@ -27,9 +29,9 @@ describe('ACTIONS module:', () => {
                 {type:'startOperation'},
                 {type:'finishOperation', results:111}
             ],
-            start    = RU.makeActionCreator('startOperation'),
-            finish   = RU.makeActionCreator('finishOperation', 'results'),
-            fetcher  = RU.makeAsyncAction(args => {
+            start    = makeActionCreator('startOperation'),
+            finish   = makeActionCreator('finishOperation', 'results'),
+            fetcher  = makeAsyncAction(args => {
 
                 expect(args.userID).toBe(99);
 
@@ -45,7 +47,7 @@ describe('ACTIONS module:', () => {
                 }, 1);
             }, 'userID');
 
-        mockStore = store.resetStore(null, {}, expected);
+        mockStore = resetStore(null, {}, expected);
 
         fetcher(99);    // triggers an expect inside the dispatch mock
         expect(mockStore.dispatch).toHaveBeenCalled();
@@ -109,8 +111,8 @@ describe('ACTION MAP module:', () => {
 
         beforeEach(() => {
             modelSeed.name = `test-model-${counter++}`;
-            model = RU.modelBuilder(clone(modelSeed));
-            mockStore = store.resetStore(model);
+            model = modelBuilder(clone(modelSeed));
+            mockStore = resetStore(model);
         });
 
         it('runs with no params', () => {

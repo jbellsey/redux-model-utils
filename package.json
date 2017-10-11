@@ -4,7 +4,8 @@
   "description": "Utilities and patterns for models using redux.js",
   "main": "dist/index.js",
   "scripts": {
-    "test": "gulp spec"
+    "test": "babel-node spec/_index.js",
+    "build": "rollup -c rollup.config.js"
   },
   "repository": {
     "type": "git",
@@ -21,19 +22,20 @@
   },
   "homepage": "https://github.com/jbellsey/redux-model-utils#readme",
   "dependencies": {
-    "assign-deep": "^0.4.5"
+    "assign-deep": "^0.4"
   },
   "devDependencies": {
-    "babel-cli": "^6.10.1",
-    "babel-preset-es2015": "^6.9.0",
-    "browserify": "^13.0.1",
+    "babel-cli": "^6.26",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.6",
+    "babel-preset-stage-0": "^6.24.1",
     "clone": "^1.0.2",
-    "gulp": "^3.9.1",
-    "gulp-babel": "^6.1.2",
-    "gulp-jasmine": "^2.3.0",
-    "gulp-streamify": "^1.0.2",
-    "redux": "^3.5.2",
-    "redux-thunk": "^2.1.0",
-    "vinyl-source-stream": "^1.1.0"
+    "jasmine": "^2.8.0",
+    "redux": "^3.7",
+    "redux-thunk": "^2.2",
+    "rollup": "^0.50",
+    "rollup-plugin-babel": "^3.0",
+    "rollup-plugin-commonjs": "^8.2",
+    "rollup-plugin-node-resolve": "^3.0"
   }
 }

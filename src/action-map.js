@@ -1,4 +1,4 @@
-var actions = require('./actions');
+import {makeActionCreator, makeAsyncAction} from './actions';
 
 /*
      if provided, the action map must be in this format:
@@ -22,7 +22,7 @@ function find(arr, predicate) {
     return undefined;
 }
 
-function parseActionMap(model) {
+export default function parseActionMap(model) {
 
     var listOfActions  = {},
         listOfPrivateActions = {},
@@ -50,15 +50,15 @@ function parseActionMap(model) {
 
         // add an action-creator. async is handled differently
         if (actionDetails.async) {
-            putHere[key] = actions.makeAsyncAction(actionDetails.async, ...params);
+            putHere[key] = makeAsyncAction(actionDetails.async, ...params);
         }
         // thunk is a synonym for async. used when the action isn't actually async, but
         // has to fire off other actions
         else if (actionDetails.thunk) {
-            putHere[key] = actions.makeAsyncAction(actionDetails.thunk, ...params);
+            putHere[key] = makeAsyncAction(actionDetails.thunk, ...params);
         }
         else {
-            putHere[key] = actions.makeActionCreator(code, ...params);
+            putHere[key] = makeActionCreator(code, ...params);
 
             // install the reducer
             listOfReducers.push({
@@ -97,7 +97,7 @@ function parseActionMap(model) {
     }
 }
 
-module.exports = {
-    parseActionMap,
-    publicAPI: {}   // no public exports
-};
+// module.exports = {
+//     parseActionMap,
+//     publicAPI: {}   // no public exports
+// };
