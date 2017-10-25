@@ -36,8 +36,7 @@ describe('REACT module:', () => {
     // custom selector to build a custom prop (we do this after CLONE, so it doesn't leak to other tests)
     modelDupe.selectors.custom = state => state.prefs.color + '~' + state.prefs.size;
     let model = makeModel(modelDupe);
-
-    state[modelDupe.name] = clone(initial);
+    state[model.name] = clone(initial);
 
     // we should get SOMETHING for react selectors, at least
     expect(model.reactSelectors).not.toBeUndefined();
@@ -66,8 +65,7 @@ describe('REACT module:', () => {
 
     // build a model & state object, set up as a sub-model {model:data, model:data}
     let model = makeModel(modelDupe),
-        state = {};
-    state[modelDupe.name] = clone(initial);
+        state = {[model.name]: clone(initial)};
 
     // double-check our main reactSelectors (same test as above)
     let connectedSelectors = model.reactSelectors(state);
@@ -76,6 +74,20 @@ describe('REACT module:', () => {
     // now test the custom props map
     let customSelectorMap = model.propsMaps.firstOnly(state);
     expect(customSelectorMap.firstLetterOfColor).toBe('r');
+  });
+
+  it('namespaces props maps when requested', () => {
+
+    // make a custom set of selectors
+    let modelDupe = clone(modelSeed);
+    modelDupe.options = {propsNamespace: 'bucket'};
+
+    // build a model & state object, set up as a sub-model {model:data, model:data}
+    let model = makeModel(modelDupe),
+        state = {[modelDupe.name]: clone(initial)};
+
+    let connectedSelectors = model.reactSelectors(state);
+    expect(connectedSelectors.bucket.color).toBe('red');
   });
 
   it('merges multiple props maps correctly', () => {
@@ -94,8 +106,7 @@ describe('REACT module:', () => {
     };
 
     let model = makeModel(modelDupe),
-        state = {};
-    state[modelDupe.name] = clone(initial);
+        state = {[modelDupe.name]: clone(initial)};
 
     // double-check our main reactSelectors (same test as above)
     let connectedSelectors = model.reactSelectors(state);

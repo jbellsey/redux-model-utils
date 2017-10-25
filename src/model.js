@@ -14,6 +14,10 @@ export function modelBuilder(model) {
   else
     allModelNames.push(model.name);
 
+  // pre cleanup
+  if (!model.options)
+    model.options = {};
+
   // juice the model name, for conflict-free living
   model.rawName = model.name;
   model.name = `model$_${model.name}`;
@@ -34,14 +38,6 @@ export function modelBuilder(model) {
   // TODO: make ez-selectors
   // i.e., if no selectors are provided, map the top level of the initialState object.
   // so this will work for action maps only
-
-  //----------
-  // MAGIC code
-  //
-
-  if (typeof model.options === 'object') {
-    // TODO
-  }
 
   //----------
   // for usage of this library with react, prepare a selector map for use with
