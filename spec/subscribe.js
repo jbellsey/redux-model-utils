@@ -1,177 +1,201 @@
 import clone from 'clone';
 import assignDeep from 'assign-deep';
-import resetStore from './_store';
 import {makeActionCreator} from '../src/actions';
-import modelBuilder from '../src/model';
+import {modelBuilder} from '../src/model';
+import mockStore from './support/mock-store';
 import subscribe from '../src/subscribe';
 
 describe('SUBSCRIBE module:', () => {
 
-        var setColor = makeActionCreator('setColor', 'col'),
-            counter  = 0,
-            initial  = {
-                userID: 0,
-                prefs: {
-                    color: 'red',
-                    size: 'large'
-                }
-            },
-            selectors = {
-                color: 'prefs.color',
-                size: 'prefs.size',
-                colorFnc: state => state.prefs.color
-            },
-            reducer = (state, action = {}) => {
+  let setColor  = makeActionCreator('setColor', 'col'),
+      setSize   = makeActionCreator('setSize', 'size'),
+      counter   = 0,
+      initial   = {
+        userID: 0,
+        prefs:  {
+          color: 'red',
+          size:  'large'
+        }
+      },
+      selectors = {
+        color:    'prefs.color',
+        size:     'prefs.size',
+        colorFnc: state => state.prefs.color
+      },
+      reducer   = (state, action = {}) => {
 
-                if (!state)
-                    state = clone(initial);
+        if (!state)
+          state = clone(initial);
 
-                switch (action.type) {
-                    case 'setColor':
-                        return assignDeep({}, state, {prefs: {color: action.col}});
+        switch (action.type) {
+          case 'setColor':
+            return assignDeep({}, state, {prefs: {color: action.col}});
 
-                    default:
-                        return state;
-                }
-            },
-            modelSeed = {
-                actions: {},
-                selectors: selectors,
-                reducer
-            },
-            model;
+          case 'setSize':
+            return assignDeep({}, state, {prefs: {size: action.size}});
 
-        beforeEach(() => {
-            modelSeed.name = `subscribe-model-${counter++}`;
-            model = modelBuilder(clone(modelSeed));
-        });
+          default:
+            return state;
+        }
+      },
+      modelSeed = {
+        actions:   {},
+        selectors: selectors,
+        reducer
+      },
+      model;
 
-    //-----------
+  beforeEach(() => {
+    modelSeed.name = `subscribe-model-${counter++}`;
+    model = modelBuilder(clone(modelSeed));
+  });
 
-    it('runs a basic reducer properly', () => {
+  //-----------
 
-        var expected  = [{ type:'setColor', col:'green' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('green');
-                expect(state.prefs.size).toBe('large');
-            });
+  it('runs a basic reducer properly', () => {
 
-        setColor('green');
-    });
+    let store = mockStore(model);
+    setColor('green');
+    expect(store.getModelState().prefs.color).toBe('green');
+  });
 
-    //-----------
+  //-----------
 
-    it('runs a raw subscriber properly (not using our wrapper)', () => {
+  it('runs our custom subscriber properly, when used with a string selector', () => {
 
-        var expected  = [{ type:'setColor', col:'yellow' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('yellow');
-            }),
-            invocationCount = 0,
-            subscriber = () => ++invocationCount;
+    let store           = mockStore(model),
+        invocationCount = 0,
+        subscriber      = () => ++invocationCount;
 
-        mockStore.subscribe(subscriber);
-        setColor('yellow');
-        expect(invocationCount).toBe(1);    // only called dispatch once
-    });
+    model.subscribe(model.selectors.color, subscriber, {noInit: true});
 
-    it('runs our custom subscriber properly', () => {
+    setColor('yellow');
+    expect(store.getModelState().prefs.color).toBe('yellow');
+    expect(invocationCount).toBe(1);
 
-        var expected  = [{ type:'setColor', col:'gray' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('gray');
-            }),
-            invocationCount = 0;
+    setColor('turq');
+    expect(store.getModelState().prefs.color).toBe('turq');
+    expect(invocationCount).toBe(2);
 
-        subscribe('prefs.color', () => ++invocationCount);
-        setColor('gray');
-        expect(invocationCount).toBe(1);
-    });
+    setSize('XXXL');
+    expect(invocationCount).toBe(2);
+  });
 
-    it('runs properly with a function selector', () => {
+  it('runs our custom subscriber properly, when used with a function selector', () => {
 
-        var expected  = [{ type:'setColor', col:'teal' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('teal');
-            }),
-            invocationCount = 0;
+    let store           = mockStore(model),
+        invocationCount = 0,
+        subscriber      = () => ++invocationCount;
 
-        subscribe(model.selectors.colorFnc, () => ++invocationCount);
-        setColor('teal');
-        expect(invocationCount).toBe(2);
-    });
+    model.subscribe(model.selectors.colorFnc, subscriber, {noInit: true});
 
-    it('respects "noInit" flag', () => {
+    setColor('kelly');
+    expect(store.getModelState().prefs.color).toBe('kelly');
+    expect(invocationCount).toBe(1);
 
-        var expected  = [{ type:'setColor', col:'purple' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('purple');
-            }),
-            invocationCount = 0;
+    setColor('royal');
+    expect(store.getModelState().prefs.color).toBe('royal');
+    expect(invocationCount).toBe(2);
 
-        subscribe('prefs.color', () => ++invocationCount, {noInit:1});
-        setColor('purple');
-        expect(invocationCount).toBe(0);
-    });
+    setSize('Petite');
+    expect(invocationCount).toBe(2);
+  });
 
-    it('receives the correct value', () => {
+  it('runs once for init, when not suppressed', () => {
 
-        var expected  = [{ type:'setColor', col:'mint' }],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('mint');
-            });
+    let invocationCount = 0,
+        subscriber      = () => ++invocationCount;
 
-        subscribe('prefs.color', newColor => expect(newColor).toBe('mint'), {noInit:1});
-        setColor('mint');
-    });
+    mockStore(model);
+    model.subscribe(model.selectors.colorFnc, subscriber);  // note: "noInit" flag omitted
+
+    expect(invocationCount).toBe(1);  // init
+
+    setColor('poiple');
+    expect(invocationCount).toBe(2);
+  });
 
 
-    it('is only invoked when the specific property changes', () => {
+  it('receives the correct value', () => {
 
-        var oneAction = { type:'setColor', col:'pink' },
-            expected  = [oneAction, oneAction, oneAction],
-            mockStore = resetStore(model, null, expected, () => {
-                var state = mockStore.getState(model);
-                expect(state.prefs.color).toBe('pink');
-            }),
-            sizeInvocations = 0,
-            colorInvocations = 0;
+    function cb(newColor, oldColor) {
+      expect(newColor).toBe('mint');
+      expect(oldColor).toBe('red');
+    }
 
-        subscribe('prefs.size',  () => ++sizeInvocations);
-        subscribe('prefs.color', () => ++colorInvocations);
-        setColor('pink');
-        setColor('pink');
-        setColor('pink');
-        expect(sizeInvocations).toBe(1);
-        expect(colorInvocations).toBe(1);
-    });
+    mockStore(model);
+    subscribe('prefs.color', cb, {noInit: 1});
+    setColor('mint');
+  });
 
+  it('is only invoked when the specific property changes', () => {
 
-    it('runs custom equality tests', () => {
+    let colorInvocations = 0;
+    mockStore(model);
 
-        var mockStore = resetStore(model),
-            invokeCt = 0;
+    model.subscribe('prefs.color', () => ++colorInvocations, {noInit: true});
+    setColor('pink');
+    setColor('pink');
+    setColor('pink');
+    expect(colorInvocations).toBe(1);
+    setColor('goldenrod');
+    setColor('goldenrod');
+    expect(colorInvocations).toBe(2);
+    setColor('pink');
+    setColor('pink');
+    expect(colorInvocations).toBe(3);
+  });
 
-        subscribe(
-            model.name + '.prefs',
-            newPrefs => {
-                ++invokeCt;
-                expect(newPrefs.color).toEqual('bone');
-            },
-            {
-                equals: (oldPrefs, newPrefs) => (oldPrefs && oldPrefs.color) === (newPrefs && newPrefs.color),
-                noInit: true
-            }
-        );
+  it('fails without a custom equality test', () => {
 
-        setColor('bone');
-        expect(invokeCt).toEqual(1);
-        expect(mockStore.getState(model).prefs.color).toEqual('bone');
-    });
+    let invokeCt = 0;
+
+    mockStore(model);
+
+    model.subscribe(
+      'prefs',
+      () => ++invokeCt,
+      {
+        // because the selector is "prefs", this defaults to "oldState.prefs === newState.prefs"
+        // with objects, that's obviously a bad idea. we really want to test prefs.color; see below
+        equals: null,
+        noInit: true
+      }
+    );
+
+    setColor('bone');
+    expect(invokeCt).toEqual(1);
+
+    // without a good equality test, the handler is invoked again (incorrectly)
+    setColor('bone');
+    expect(invokeCt).toEqual(2);
+  });
+
+  it('runs custom equality tests', () => {
+
+    let store    = mockStore(model),
+        invokeCt = 0;
+
+    model.subscribe(
+      'prefs',
+      () => ++invokeCt,
+      {
+        // we look deeper than the selector itself, into prefs.color
+        equals: (oldPrefs, newPrefs) => (oldPrefs && oldPrefs.color) === (newPrefs && newPrefs.color),
+        noInit: true
+      }
+    );
+
+    setColor('bone');
+    expect(invokeCt).toEqual(1);
+    expect(store.getModelState().prefs.color).toEqual('bone');
+
+    setColor('bone');
+    expect(invokeCt).toEqual(1);    // no extra invocation
+    expect(store.getModelState().prefs.color).toEqual('bone');
+
+    setColor('taupe');
+    expect(invokeCt).toEqual(2);
+    expect(store.getModelState().prefs.color).toEqual('taupe');
+  });
 });

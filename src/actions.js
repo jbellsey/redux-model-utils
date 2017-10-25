@@ -4,7 +4,7 @@ import {getStore} from './store';
 // plus whatever values you request in the [valueNames] and [values] arrays.
 // this is not needed by client applications; use the other tools provided below.
 //
-function makeAction(type, valueNames, values) {
+export function makeAction(type, valueNames, values) {
   let action = {type};
   valueNames.forEach((arg, index) => {
     action[valueNames[index]] = values[index];
@@ -19,7 +19,7 @@ function makeAction(type, valueNames, values) {
 //      let add = makeActionCreator('adder', 'number');
 //      add(4);
 //
-export function makeActionCreator(type, ...argNames) {
+export function makeActionCreator(type, ...argNames ) {
 
   return (...args) => {
     let action = makeAction(type, argNames, args);

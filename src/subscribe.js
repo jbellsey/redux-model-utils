@@ -17,7 +17,7 @@ import lookup from './lookup';
  *
  * @param opts{object}
  * Subscription options. The following options are available:
- *      {noInit:true} to suppress invoking the callback once at initialization time
+ *      {noInit:bool} to suppress invoking the callback once at initialization time
  *      {equals:function} to provide a custom test for equality. The default comparator
  *              looks at primitive values only (i.e., a === b).
  *
@@ -28,9 +28,10 @@ import lookup from './lookup';
 export default function subscribe(selector, cb, opts = {}) {
 
   let previousValue,
-      equals  = opts.equals || ((a, b) => a === b),
-      val     = () => lookup(getStore().getState(), selector),
-      handler = () => {
+      modelName = (this && this._magic_rmu) ? this.name : '',
+      equals    = opts.equals || ((a, b) => a === b),
+      val       = () => lookup(getStore().getState(), selector, modelName),
+      handler   = () => {
         let currentValue = val();
         if (!equals(previousValue, currentValue)) {
           let temp = previousValue;

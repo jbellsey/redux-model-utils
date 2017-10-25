@@ -1,9 +1,10 @@
 import clone from 'clone';
-import modelBuilder from '../src/model';
+import {modelBuilder} from '../src/model';
+import {mergeReactSelectors} from '../src/react';
 
 describe('REACT module:', () => {
 
-  var initial   = {
+  let initial   = {
         userID: 0,
         prefs:  {
           color: 'red',
@@ -19,7 +20,7 @@ describe('REACT module:', () => {
           color: 'prefs.color',
           size:  'prefs.size',
         },
-        reducer:      state => state
+        reducer: state => state
       },
       makeModel = (model = modelSeed) => {
         model.name = `react-model-${counter++}`;
@@ -56,7 +57,7 @@ describe('REACT module:', () => {
     let customSelectors = {
           firstLetterOfColor: state => state.prefs.color.charAt(0)
         },
-        modelDupe       = clone(modelSeed);
+        modelDupe = clone(modelSeed);
 
     // attach the custom selectors as propsMaps
     modelDupe.propsMaps = {
@@ -77,5 +78,37 @@ describe('REACT module:', () => {
     expect(customSelectorMap.firstLetterOfColor).toBe('r');
   });
 
-  // TODO: test mergeReactSelectors
+  it('merges multiple props maps correctly', () => {
+
+    // make two custom set of selectors
+    let modelDupe = clone(modelSeed);
+
+    // attach the custom selectors as propsMaps
+    modelDupe.propsMaps = {
+      firstOnly: {
+        firstLetterOfColor: state => state.prefs.color.charAt(0)
+      },
+      lastOnly: {
+        lastLetterOfColor: state => state.prefs.color.charAt(state.prefs.color.length - 1)
+      }
+    };
+
+    let model = makeModel(modelDupe),
+        state = {};
+    state[modelDupe.name] = clone(initial);
+
+    // double-check our main reactSelectors (same test as above)
+    let connectedSelectors = model.reactSelectors(state);
+    expect(connectedSelectors.color).toBe('red');
+
+    // now test the custom props map (not merged yet)
+    let customSelectorMap = model.propsMaps.firstOnly(state);
+    expect(customSelectorMap.firstLetterOfColor).toBe('r');
+    expect(customSelectorMap.lastLetterOfColor).toBeUndefined();
+
+    let mergedMap = mergeReactSelectors(modelDupe.propsMaps.firstOnly, modelDupe.propsMaps.lastOnly),
+        mergedProps = mergedMap(state);
+    expect(mergedProps.firstLetterOfColor).toBe('r');
+    expect(mergedProps.lastLetterOfColor).toBe('d');
+  });
 });

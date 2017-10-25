@@ -1,4 +1,3 @@
-import assignDeep from 'assign-deep';
 import lookup from './lookup';
 
 // builds a function that returns a new map of selectors.
@@ -11,19 +10,10 @@ function externalizeSelectors(selectors, modelName) {
 
     return Object.keys(selectors).reduce((map, sel) => {
 
-      var thisSelector = selectors[sel],
-          val, subState;
-
-      if (typeof thisSelector === 'function') {
-        subState = state[modelName];
-        val = thisSelector((typeof subState === 'object') ? subState : state);
-      }
-      else if (typeof thisSelector === 'string') {
-        subState = state[modelName];
-        val = lookup((typeof subState === 'object') ? subState : state, thisSelector);
-      }
-      map[sel] = val;
-
+      // note: older versions of this code had fallbacks for when state[modelName]
+      // didn't resolve correctly. this should never happen.
+      //
+      map[sel] = lookup(state, selectors[sel], modelName);
       return map;
     }, {});
   };
@@ -58,21 +48,10 @@ export function mergeReactSelectors(...objects) {
       // is it a model? then pull its already-prepared reactSelectors.
       // otherwise, it's a propsMap that has already been reactified
       if (oneObject._magic_rmu)
-        oneObject = oneObject.reactSelectors(state);
+        oneObject = oneObject.reactSelectors;
 
-      assignDeep(props, oneObject);
+      Object.assign(props, oneObject(state));
     });
     return props;
   };
 }
-
-// module.exports = {
-//
-//     // these exports are only available inside this library
-//     reactify,
-//
-//     // and these are visible to library users
-//     publicAPI: {
-//         mergeReactSelectors
-//     }
-// };

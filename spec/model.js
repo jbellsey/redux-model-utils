@@ -1,10 +1,10 @@
 import clone from 'clone';
-import resetStore from './_store';
-import modelBuilder from '../src/model';
+import {modelBuilder} from '../src/model';
+import mockStore from './support/mock-store';
 
 describe('MODEL module:', () => {
 
-  var seed = {
+  const seed = {
     name:         'test-model',
     actionMap:    {},
     initialState: {},
@@ -13,7 +13,7 @@ describe('MODEL module:', () => {
 
   it('refuses to create models with the same name', () => {
 
-    var setup = () => {
+    const setup = () => {
       modelBuilder(seed);
       modelBuilder(seed);
     };
@@ -23,7 +23,7 @@ describe('MODEL module:', () => {
 
 describe('DATA ACCESSORS module:', () => {
 
-  var initial   = {
+  let initial   = {
         userID: 0,
         prefs:  {
           color: 'red',
@@ -34,18 +34,12 @@ describe('DATA ACCESSORS module:', () => {
         name:         'accessors-model',
         actionMap:    {},
         initialState: clone(initial),
-        selectors:    {
-          color: 'prefs.color',
-          size:  'prefs.size'
-        }
+        selectors:    {}
       },
-      model     = modelBuilder(modelSeed);
+      model = modelBuilder(modelSeed);
 
-  it('creates and handles data accessors for string-selectors and function-selectors', () => {
-
-    // TODO: more tests
-    var mockStore = resetStore(model, null, 0);
-    mockStore.forceFullScope(true);
-    expect(model.data.color).toBe('red');
+  it('passes back the full model state on "data"', () => {
+    mockStore(model);
+    expect(model.data.prefs.color).toBe('red');
   });
 });

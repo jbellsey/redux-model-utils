@@ -1,30 +1,26 @@
-import lookup from './lookup';
 import {getStore} from './store';
 
-// create direct getters for accessing the underlying model: "model.data.property"
-// one accessor is created for each selector in your list (and with the same name)
-// we also create a top-level accessor "model.allData" to retrieve the full state.
+// create a direct getter for accessing the underlying model: "model.data.property".
+// "model.data" will return the entire state tree for a given model. use cautiosly,
+// as it's the actual state, not a copy.
 //
 export default function buildAccessors(model) {
 
-  let data = {};
+  Object.defineProperty(model, 'data', {
+    get: () => {
+      let state = getStore().getState(),
+          subState = state[model.name];
 
-  Object.keys(model.selectors).forEach(key => {
-    Object.defineProperty(data, key, {
-      get: () => {
-        let state = getStore().getState();
-        return lookup(state, model.selectors[key]);
-      }
-    });
+      // this test should always be true
+      return (typeof subState === 'object') ? subState : state;
+    }
   });
-  model.data = data;
 
+  // earlier versions of this library exposed "allData", which did the same thing.
   Object.defineProperty(model, 'allData', {
     get: () => {
-      let state = getStore().getState();
-      if (typeof state[model.name] === 'object')
-        state = state[model.name];
-      return state;
+      console.warn('Warning: the "allData" accessor is deprecated. Use model.data instead.');
+      return model.data;
     }
   });
 }

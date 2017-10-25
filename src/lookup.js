@@ -13,9 +13,21 @@ function peek(obj, selectorString) {
   return obj[final];
 }
 
-export default function lookup(obj, selector) {
-  if (typeof selector === 'string')
+export default function lookup(obj, selector, modelName) {
+  if (typeof selector === 'string') {
+    if (modelName)
+      selector = `${modelName}.${selector}`;
     return peek(obj, selector);
-  else if (typeof selector === 'function')
-    return selector(obj);
+  }
+  else if (typeof selector === 'function') {
+    if (modelName)
+      obj = obj[modelName];
+
+    try {
+      return selector(obj);
+    }
+    catch(e) {
+      return undefined;
+    }
+  }
 }

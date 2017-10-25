@@ -1,10 +1,11 @@
 {
   "name": "redux-model-utils",
-  "version": "0.5.2",
+  "version": "1.0.0",
   "description": "Utilities and patterns for models using redux.js",
-  "main": "dist/index.js",
+  "main": "dist/rmu-cjs.js",
+  "module": "dist/rmu-es6.js",
   "scripts": {
-    "test": "babel-node spec/_index.js",
+    "test": "babel-node spec/_runTests.js",
     "build": "rollup -c rollup.config.js"
   },
   "repository": {
@@ -21,17 +22,17 @@
     "url": "https://github.com/jbellsey/redux-model-utils/issues"
   },
   "homepage": "https://github.com/jbellsey/redux-model-utils#readme",
-  "dependencies": {
-    "assign-deep": "^0.4"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "assign-deep": "^0.4",
     "babel-cli": "^6.26",
-    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-plugin-external-helpers": "^6.22",
     "babel-preset-env": "^1.6",
     "babel-preset-stage-0": "^6.24.1",
     "clone": "^1.0.2",
     "jasmine": "^2.8.0",
     "redux": "^3.7",
+    "redux-mock-store": "^1.3",
     "redux-thunk": "^2.2",
     "rollup": "^0.50",
     "rollup-plugin-babel": "^3.0",
