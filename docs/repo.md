@@ -1,21 +1,15 @@
 
 # Building and testing this repo
 
-This repo uses gulp for its build process.
+Two scripts are provided:
 
-```sh
-gulp build
+```bash
+npm run build
+npm run test
 ```
 
-This generates the public library files (in the `dist`
-folder).
+Tests are in the `spec` folder. They are written in Jasmine.
 
-```sh
-gulp spec
-```
-
-This runs the tests in the `spec` folder. They are
-written in Jasmine.
-
-The other gulp tasks are used internally.
-
+The build files are stored in `dist`. They are created with
+Rollup. We build two files; one with ES6 exports, and one
+with CommonJS. Both are otherwise Babelified down to ES5 code.

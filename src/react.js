@@ -1,4 +1,4 @@
-import lookup from './lookup';
+import {lookup} from './utils';
 
 // builds a function that returns a new map of selectors.
 // the new map is scoped to the model name. used for setting

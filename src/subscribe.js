@@ -1,5 +1,5 @@
 import {getStore} from './store';
-import lookup from './lookup';
+import {lookup} from './utils';
 
 /**
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)

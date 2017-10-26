@@ -109,34 +109,6 @@ function makeAsyncAction(cb) {
   };
 }
 
-function peek(obj, selectorString) {
-
-  var props = selectorString.split('.'),
-      final = props.pop(),
-      p = void 0;
-
-  while (p = props.shift()) {
-    if (typeof obj[p] === 'undefined') return undefined;
-    obj = obj[p];
-  }
-
-  return obj[final];
-}
-
-function lookup(obj, selector, modelName) {
-  if (typeof selector === 'string') {
-    if (modelName) selector = modelName + '.' + selector;
-    return peek(obj, selector);
-  } else if (typeof selector === 'function') {
-    if (modelName) obj = obj[modelName];
-    try {
-      return selector(obj);
-    } catch (e) {
-      return undefined;
-    }
-  }
-}
-
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
 } : function (obj) {
@@ -272,6 +244,20 @@ var asyncGenerator = function () {
 
 
 
+var defineProperty = function (obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+};
 
 
 
@@ -285,8 +271,17 @@ var asyncGenerator = function () {
 
 
 
+var objectWithoutProperties = function (obj, keys) {
+  var target = {};
 
+  for (var i in obj) {
+    if (keys.indexOf(i) >= 0) continue;
+    if (!Object.prototype.hasOwnProperty.call(obj, i)) continue;
+    target[i] = obj[i];
+  }
 
+  return target;
+};
 
 
 
@@ -318,38 +313,84 @@ var toConsumableArray = function (arr) {
   }
 };
 
+function peek(obj, selectorString) {
+
+  var props = selectorString.split('.'),
+      final = props.pop(),
+      p = void 0;
+
+  while (p = props.shift()) {
+    if (typeof obj[p] === 'undefined') return undefined;
+    obj = obj[p];
+  }
+
+  return obj[final];
+}
+
+function lookup(obj, selector, modelName) {
+  if (typeof selector === 'string') {
+    if (modelName) selector = modelName + '.' + selector;
+    return peek(obj, selector);
+  } else if (typeof selector === 'function') {
+    if (modelName) obj = obj[modelName];
+
+    try {
+      return selector(obj);
+    } catch (e) {
+      return undefined;
+    }
+  }
+}
+
+function find(arr, predicate) {
+  var value = void 0;
+  for (var i = 0; i < arr.length; ++i) {
+    if (predicate(value = arr[i])) return value;
+  }
+  return undefined;
+}
+
+function isFunction(x) {
+  return x instanceof Function;
+}
+
+function isObject(x) {
+  return x !== null && (typeof x === 'undefined' ? 'undefined' : _typeof(x)) === 'object';
+}
+
 // builds a function that returns a new map of selectors.
 // the new map is scoped to the model name. used for setting
 // up react-redux
 //
-function externalizeSelectors(selectors, modelName) {
+function externalizeSelectors(selectors, model) {
+
+  var modelName = model.name,
+      namespace = model.options.propsNamespace;
+
+  if (namespace !== undefined && typeof namespace !== 'string') {
+    console.warn('redux-model-utils: propsNamespace must be a string');
+    namespace = null;
+  }
 
   return function (state) {
 
-    return Object.keys(selectors).reduce(function (map, sel) {
+    var props = Object.keys(selectors).reduce(function (map, sel) {
 
-      var thisSelector = selectors[sel],
-          val = void 0,
-          subState = void 0;
-
-      if (typeof thisSelector === 'function') {
-        subState = state[modelName];
-        val = thisSelector((typeof subState === 'undefined' ? 'undefined' : _typeof(subState)) === 'object' ? subState : state);
-      } else if (typeof thisSelector === 'string') {
-        subState = state[modelName];
-        val = lookup((typeof subState === 'undefined' ? 'undefined' : _typeof(subState)) === 'object' ? subState : state, thisSelector);
-      }
-      map[sel] = val;
-
+      // note: older versions of this code had fallbacks for when state[modelName]
+      // didn't resolve correctly. this should never happen.
+      //
+      map[sel] = lookup(state, selectors[sel], modelName);
       return map;
     }, {});
+
+    return namespace ? defineProperty({}, namespace, props) : props;
   };
 }
 
 function reactify(model) {
 
   // the default map of selectors to props
-  model.reactSelectors = externalizeSelectors(model.selectors || {}, model.name);
+  model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
 
   // the user can request additional maps be created. each key in the "propsMap"
   // field on the model is converted into a new set of reactSelectors:
@@ -357,7 +398,7 @@ function reactify(model) {
   //  model.propsMaps = {key1: selectors, key2: moreSelectors}
   //
   model.propsMaps = Object.keys(model.propsMaps || {}).reduce(function (newPropsMaps, oneMapName) {
-    newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model.name);
+    newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model);
     return newPropsMaps;
   }, {});
 }
@@ -377,9 +418,9 @@ function mergeReactSelectors() {
 
       // is it a model? then pull its already-prepared reactSelectors.
       // otherwise, it's a propsMap that has already been reactified
-      if (oneObject._magic_rmu) oneObject = oneObject.reactSelectors(state);
+      if (oneObject._magic_rmu) oneObject = oneObject.reactSelectors;
 
-      Object.assign(props, oneObject);
+      Object.assign(props, oneObject(state));
     });
     return props;
   };
@@ -410,103 +451,113 @@ function buildAccessors(model) {
   });
 }
 
-/*
-     if provided, the action map must be in this format:
-        actionMap = {
-            key: {
-                params: [array, of, strings, for, action, creator]
-                reducer(state, action) => {}
-            }
-        }
+function isAction(obj) {
+  return isObject(obj) && (isFunction(obj.reducer) || isFunction(obj.async) || isFunction(obj.thunk));
+}
 
-     and if you provide it, you must also attach an "initialState" object to the model.
- */
+function mapActions(actionMap, namespace, mapInfo) {
+  var actionTree = mapInfo.actionTree,
+      privateTree = mapInfo.privateTree,
+      listOfReducers = mapInfo.listOfReducers;
 
-function find(arr, predicate) {
 
-    var value, i;
-    for (i = 0; i < arr.length; ++i) {
-        if (predicate(value = arr[i])) return value;
+  Object.keys(actionMap).forEach(function (key) {
+    var actionDetails = actionMap[key],
+        code = namespace + '~' + key,
+        params = actionDetails.params,
+        async = actionDetails.async,
+        thunk = actionDetails.thunk,
+        reducer = actionDetails.reducer,
+        isPrivateAction = actionDetails.private,
+        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'private']),
+        putHere = void 0,
+        actionMethod = void 0;
+
+    // first deal with the action at the top level of this object. it may or may not exist.
+    if (isAction(actionDetails)) {
+      if (isPrivateAction) {
+        putHere = privateTree;
+        mapInfo.anyPrivate = true;
+      } else putHere = actionTree;
+
+      if (typeof params === 'string') params = [params];else if (!params) params = [];
+
+      // add an action-creator. async is handled differently. (thunk is a synonym)
+      var asyncHandler = async || thunk;
+      if (asyncHandler) actionMethod = makeAsyncAction.apply(undefined, [asyncHandler].concat(toConsumableArray(params)));else {
+        actionMethod = makeActionCreator.apply(undefined, [code].concat(toConsumableArray(params)));
+
+        // install the reducer. private reducers go here as well
+        listOfReducers.push({
+          code: code,
+          fnc: reducer
+        });
+      }
+      putHere[key] = actionMethod;
     }
-    return undefined;
+
+    // next, deal with nested actions. the root level (handled above) may or
+    // may not exist. so sub-actions may be nested inside a new object, or they may
+    // be nested as new properties attached directly to the function at the root.
+    //
+    if (Object.keys(subActions).length > 0) {
+      // set up mapInfo at the new nest level
+      mapInfo.actionTree = actionTree[key] = actionMethod || {};
+      mapInfo.privateTree = privateTree[key] = actionMethod || {};
+
+      // scan all of the sub-actions
+      mapActions(actionDetails, key, mapInfo);
+
+      // put mapInfo back the way it was
+      mapInfo.actionTree = actionTree;
+      mapInfo.privateTree = privateTree;
+    }
+  });
 }
 
 function parseActionMap(model) {
 
-    var listOfActions = {},
-        listOfPrivateActions = {},
-        listOfReducers = [],
-        anyPrivate = false;
+  // this blob will be used by mapActions to track status. consider it
+  // a giant return value
+  //
+  var mapInfo = {
+    actionTree: {},
+    privateTree: {},
+    listOfReducers: [],
+    anyPrivate: false
+  };
 
-    Object.keys(model.actionMap).forEach(function (key) {
+  mapActions(model.actionMap, model.name, mapInfo);
 
-        var actionDetails = model.actionMap[key],
-            code = model.name + '_' + key,
-            params = actionDetails.params,
-            putHere = void 0;
-
-        if (actionDetails.private) {
-            putHere = listOfPrivateActions;
-            anyPrivate = true;
-        } else putHere = listOfActions;
-
-        if (typeof params === 'string') params = [params];else if (!params) params = [];
-
-        // add an action-creator. async is handled differently
-        if (actionDetails.async) {
-            putHere[key] = makeAsyncAction.apply(undefined, [actionDetails.async].concat(toConsumableArray(params)));
-        }
-        // thunk is a synonym for async. used when the action isn't actually async, but
-        // has to fire off other actions
-        else if (actionDetails.thunk) {
-                putHere[key] = makeAsyncAction.apply(undefined, [actionDetails.thunk].concat(toConsumableArray(params)));
-            } else {
-                putHere[key] = makeActionCreator.apply(undefined, [code].concat(toConsumableArray(params)));
-
-                // install the reducer
-                listOfReducers.push({
-                    code: code,
-                    fnc: actionDetails.reducer
-                });
-            }
-    });
-
-    // the output of the actionMap: public actions, private actions, and reducer
-    model.actions = listOfActions;
-    model.privateActions = listOfPrivateActions;
-    model.reducer = function () {
-        var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : model.initialState;
-        var action = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  // the output of the actionMap: public actions, private actions, and a single master reducer
+  model.actions = mapInfo.actionTree;
+  model.privateActions = mapInfo.privateTree;
+  model.reducer = function () {
+    var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : model.initialState;
+    var action = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
 
-        var matcher = function matcher(reducer) {
-            return reducer.code === action.type;
-        },
-            reducerInfo = find(listOfReducers, matcher);
+    var matcher = function matcher(reducer) {
+      return reducer.code === action.type;
+    },
+        reducerInfo = find(mapInfo.listOfReducers, matcher);
 
-        if (!reducerInfo) reducerInfo = find(listOfPrivateActions, matcher);
+    if (reducerInfo) state = reducerInfo.fnc(state, action);
+    return state;
+  };
 
-        if (reducerInfo) state = reducerInfo.fnc(state, action);
-        return state;
+  // this can be used one time only.
+  // it retrieves the list of private actions, and severs
+  // that list from the public model.
+  //
+  if (mapInfo.anyPrivate) {
+    model.severPrivateActions = function () {
+      var trulyPrivateActions = model.privateActions;
+      model.privateActions = null;
+      return trulyPrivateActions;
     };
-
-    // this can be used one time only.
-    // it retrieves the list of private actions, and severs
-    // that list from the public model.
-    //
-    if (anyPrivate) {
-        model.severPrivateActions = function () {
-            var trulyPrivateActions = model.privateActions;
-            model.privateActions = null;
-            return trulyPrivateActions;
-        };
-    }
+  }
 }
-
-// module.exports = {
-//     parseActionMap,
-//     publicAPI: {}   // no public exports
-// };
 
 /**
  * Custom wrapper around store.subscribe. This is patched into every model (see model.js)
@@ -570,6 +621,9 @@ function modelBuilder(model) {
 
   if (allModelNames.indexOf(model.name) !== -1) throw new Error('redux-model-utils: Two models have the same name (' + model.name + ')');else allModelNames.push(model.name);
 
+  // pre cleanup
+  if (!model.options) model.options = {};
+
   // juice the model name, for conflict-free living
   model.rawName = model.name;
   model.name = 'model$_' + model.name;
@@ -591,14 +645,6 @@ function modelBuilder(model) {
   // so this will work for action maps only
 
   //----------
-  // MAGIC code
-  //
-
-  if (_typeof(model.options) === 'object') {}
-  // TODO
-
-
-  //----------
   // for usage of this library with react, prepare a selector map for use with
   // the connect() function provided by react-redux. does not affect non-react apps.
   //
@@ -616,4 +662,4 @@ function modelBuilder(model) {
   return model;
 }
 
-export { modelBuilder, mergeReactSelectors, makeAction, makeActionCreator, makeAsyncAction, buildReducerMap, getStore, setStore };
+export { mergeReactSelectors, modelBuilder, makeAction, makeActionCreator, makeAsyncAction, buildReducerMap, getStore, setStore };

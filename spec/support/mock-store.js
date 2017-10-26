@@ -20,6 +20,7 @@ export default function mockStore(model) {
         store           = configureStore(middlewares)(getState);
 
   setStore(store);
+  spyOn(store, 'dispatch').and.callThrough();
   currentState = {[modelName]: model.reducer()};
   store.getModelState = getModelState;
   return store;

@@ -4,7 +4,6 @@
 * [Actions](actions.md)
 * [Selectors](selectors.md)
 * [Usage with React](react.md)
-* [Magic triggers](magic.md)
 * [A complete example](example.md)
 * [Testing your app](testing.md)
 

@@ -1,5 +1,4 @@
 import clone from 'clone';
-import assignDeep from 'assign-deep';
 import mockStore, {mockModelFreeStore} from './support/mock-store';
 import {makeActionCreator, makeAsyncAction} from '../src/actions';
 import {modelBuilder} from '../src/model';
@@ -57,7 +56,6 @@ describe('ACTIONS module:', () => {
 
 });
 
-
 describe('ACTION MAP module:', () => {
 
   let initial   = {
@@ -76,15 +74,15 @@ describe('ACTION MAP module:', () => {
       modelSeed = {
         actionMap: {
           makeBlue: {
-            reducer: state => assignDeep({}, state, {prefs: {color: 'blue'}})
+            reducer: state => ({...state, prefs: {color: 'blue'}})
           },
           makeAnyColor: {
             params:  'color',
-            reducer: (state, action) => assignDeep({}, state, {prefs: {color: action.color}})
+            reducer: (state, {color}) => ({...state, prefs: {color}})
           },
           changeColorAndSize: {
             params:  ['color', 'size'],
-            reducer: (state, action) => assignDeep({}, state, {prefs: {color: action.color, size: action.size}})
+            reducer: (state, {color, size}) => ({...state, prefs: {color, size}})
           },
           timer100: {
             async: () => tick(10)
@@ -94,11 +92,11 @@ describe('ACTION MAP module:', () => {
           },
           privateAction: {
             private: true,
-            reducer: state => assignDeep({}, state, {prefs: {color: 'peacock'}})
+            reducer: state => ({...state, prefs: {color: 'peacock'}})
           },
           anotherPrivateAction: {
             private: true,
-            reducer: state => assignDeep({}, state, {prefs: {color: 'sandstone'}})
+            reducer: state => ({...state, prefs: {color: 'sandstone'}})
           },
           privateAsync:         {
             private: true,
@@ -165,5 +163,124 @@ describe('ACTION MAP module:', () => {
       trulyPrivateActions.anotherPrivateAction();
       expect(store.getModelState().prefs.color).toBe('sandstone');
     });
+  });
+});
+
+describe('NESTED actions', () => {
+  let initial   = {
+        userID: 0,
+        workResult: 0,
+        prefs:  {
+          color: 'red',
+          size:  'large'
+        }
+      },
+      selectors = {
+        color:    'prefs.color',
+        size:     'prefs.size',
+        colorFnc: state => state.prefs.color
+      },
+      modelSeed = {
+        actionMap: {
+          makeAnyColor: {
+            params:  'color',
+            reducer: (state, {color}) => ({...state, prefs: {color}})
+          },
+          timer100: {
+            async: () => tick(10)
+          },
+          timer100_thunk: {
+            thunk: () => tick(10)
+          },
+          color: {
+            reddish: {
+              reducer: state => ({...state, prefs: {color: 'reddish'}})
+            },
+            bluish: {
+              reducer: state => ({...state, prefs: {color: 'bluish'}})
+            },
+            greenish: {
+              private: true,
+              reducer: state => ({...state, prefs: {color: 'greenish'}})
+            }
+          },
+          save: {
+            user: {
+              // no state changing in this action. used to ensure that the promise
+              // is returned correctly
+              async: () => tick(10).then(() => ({name: 'john'}))
+            },
+            details: {
+              // a typical async method which calls a private action
+              params: 'id',
+              async: () => tick(10).then(() =>{
+                privateActions.save._storeUser(99)
+              })
+            },
+            _storeUser: {
+              // private nested action
+              private: true,
+              params: 'id',
+              reducer: (state, {id}) => ({...state, userID: id})
+            }
+          },
+
+          // this one has an action at the top level ("doWork"), as well as nested actions
+          doWork: {
+            async: () => tick(10).then(() =>{
+              privateActions.doWork._storeWork(303)
+            }),
+            _storeWork: {
+              private: true,
+              params: 'val',
+              reducer: (state, {val}) => ({...state, workResult: val})
+            }
+          }
+        },
+        initialState: initial,
+        selectors:    selectors
+      },
+      model, store, privateActions;
+
+  beforeEach(() => {
+    modelSeed.name = 'nested';
+    model = modelBuilder(clone(modelSeed));
+    privateActions = model.severPrivateActions();
+    store = mockStore(model);
+  });
+
+  it('should make a nested action map', done => {
+
+    // top level actions should still work
+    model.actions.makeAnyColor('charcoal');
+    expect(store.getModelState().prefs.color).toBe('charcoal');
+
+    // a few public nested actions
+    model.actions.color.reddish();
+    expect(store.getModelState().prefs.color).toBe('reddish');
+    model.actions.color.bluish();
+    expect(store.getModelState().prefs.color).toBe('bluish');
+
+    // greenish is a private nested action
+    expect(model.actions.color.greenish).toBe(undefined);
+    privateActions.color.greenish();
+    expect(store.getModelState().prefs.color).toBe('greenish');
+
+    // async nested with a return value
+    model.actions.save.user()
+      .then(userData => {
+        expect(userData.name).toBe('john');
+      })
+      // async nested, including a call to a private sub-action
+      .then(() => model.actions.save.details())
+      .then(() => {
+        expect(store.getModelState().userID).toBe(99);
+      })
+      // nested, with an action at the top level of the nest
+      .then(() => model.actions.doWork())
+      .then(() => {
+        expect(store.getModelState().workResult).toBe(303);
+      })
+      .then(done);
   });
 });

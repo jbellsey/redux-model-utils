@@ -1,4 +1,4 @@
-import lookup from '../src/lookup';
+import {lookup} from '../src/utils';
 
 function makeStoreData(modelName) {
   const rawData = {

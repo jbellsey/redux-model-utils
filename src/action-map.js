@@ -1,83 +1,94 @@
 import {makeActionCreator, makeAsyncAction} from './actions';
+import {find, isObject, isFunction} from './utils';
 
-/*
-     if provided, the action map must be in this format:
-        actionMap = {
-            key: {
-                params: [array, of, strings, for, action, creator]
-                reducer(state, action) => {}
-            }
-        }
 
-     and if you provide it, you must also attach an "initialState" object to the model.
- */
+function isAction(obj) {
+  return isObject(obj)
+    && (isFunction(obj.reducer) || isFunction(obj.async) || isFunction(obj.thunk));
+}
 
-function find(arr, predicate) {
+function mapActions(actionMap, namespace, mapInfo) {
 
-  let value;
-  for (let i = 0; i < arr.length; ++i) {
-    if (predicate(value = arr[i]))
-      return value;
-  }
-  return undefined;
+  let {actionTree, privateTree, listOfReducers} = mapInfo;
+
+  Object.keys(actionMap).forEach(key => {
+
+    let actionDetails = actionMap[key],
+        code          = `${namespace}~${key}`,
+        {params, async, thunk, reducer, private: isPrivateAction,   // these are the reserved words that indicate an action
+          ...subActions} = actionDetails,   // everything else becomes a sub-action
+        putHere, actionMethod;
+
+    // first deal with the action at the top level of this object. it may or may not exist.
+    if (isAction(actionDetails)) {
+      if (isPrivateAction) {
+        putHere = privateTree;
+        mapInfo.anyPrivate = true;
+      }
+      else
+        putHere = actionTree;
+
+      if (typeof params === 'string')
+        params = [params];
+      else if (!params)
+        params = [];
+
+      // add an action-creator. async is handled differently. (thunk is a synonym)
+      const asyncHandler = async || thunk;
+      if (asyncHandler)
+        actionMethod = makeAsyncAction(asyncHandler, ...params);
+      else {
+        actionMethod = makeActionCreator(code, ...params);
+
+        // install the reducer. private reducers go here as well
+        listOfReducers.push({
+          code,
+          fnc: reducer
+        });
+      }
+      putHere[key] = actionMethod;
+    }
+
+    // next, deal with nested actions. the root level (handled above) may or
+    // may not exist. so sub-actions may be nested inside a new object, or they may
+    // be nested as new properties attached directly to the function at the root.
+    //
+    if (Object.keys(subActions).length > 0) {
+      // set up mapInfo at the new nest level
+      mapInfo.actionTree  = actionTree[key]  = actionMethod || {};
+      mapInfo.privateTree = privateTree[key] = actionMethod || {};
+
+      // scan all of the sub-actions
+      mapActions(actionDetails, key, mapInfo);
+
+      // put mapInfo back the way it was
+      mapInfo.actionTree  = actionTree;
+      mapInfo.privateTree = privateTree;
+    }
+  });
 }
 
 export default function parseActionMap(model) {
 
-  let listOfActions        = {},
-      listOfPrivateActions = {},
-      listOfReducers       = [],
-      anyPrivate           = false;
+  // this blob will be used by mapActions to track status. consider it
+  // a giant return value
+  //
+  let mapInfo = {
+    actionTree:     {},
+    privateTree:    {},
+    listOfReducers: [],
+    anyPrivate:     false
+  };
 
-  Object.keys(model.actionMap).forEach(key => {
+  mapActions(model.actionMap, model.name, mapInfo);
 
-    let actionDetails = model.actionMap[key],
-        code          = `${model.name}_${key}`,
-        params        = actionDetails.params,
-        putHere;
-
-    if (actionDetails.private) {
-      putHere = listOfPrivateActions;
-      anyPrivate = true;
-    }
-    else
-      putHere = listOfActions;
-
-    if (typeof params === 'string')
-      params = [params];
-    else if (!params)
-      params = [];
-
-    // add an action-creator. async is handled differently
-    if (actionDetails.async) {
-      putHere[key] = makeAsyncAction(actionDetails.async, ...params);
-    }
-    // thunk is a synonym for async. used when the action isn't actually async, but
-    // has to fire off other actions
-    else if (actionDetails.thunk) {
-      putHere[key] = makeAsyncAction(actionDetails.thunk, ...params);
-    }
-    else {
-      putHere[key] = makeActionCreator(code, ...params);
-
-      // install the reducer
-      listOfReducers.push({
-        code,
-        fnc: actionDetails.reducer
-      });
-    }
-  });
-
-  // the output of the actionMap: public actions, private actions, and reducer
-  model.actions = listOfActions;
-  model.privateActions = listOfPrivateActions;
+  // the output of the actionMap: public actions, private actions, and a single master reducer
+  model.actions = mapInfo.actionTree;
+  model.privateActions = mapInfo.privateTree;
   model.reducer = (state = model.initialState, action = {}) => {
 
     let matcher     = reducer => reducer.code === action.type,
-        reducerInfo = find(listOfReducers, matcher);
-
-    if (!reducerInfo)
-      reducerInfo = find(listOfPrivateActions, matcher);
+        reducerInfo = find(mapInfo.listOfReducers, matcher);
 
     if (reducerInfo)
       state = reducerInfo.fnc(state, action);
@@ -88,7 +99,7 @@ export default function parseActionMap(model) {
   // it retrieves the list of private actions, and severs
   // that list from the public model.
   //
-  if (anyPrivate) {
+  if (mapInfo.anyPrivate) {
     model.severPrivateActions = () => {
       let trulyPrivateActions = model.privateActions;
       model.privateActions = null;

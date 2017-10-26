@@ -13,7 +13,7 @@ function peek(obj, selectorString) {
   return obj[final];
 }
 
-export default function lookup(obj, selector, modelName) {
+export function lookup(obj, selector, modelName) {
   if (typeof selector === 'string') {
     if (modelName)
       selector = `${modelName}.${selector}`;
@@ -30,4 +30,21 @@ export default function lookup(obj, selector, modelName) {
       return undefined;
     }
   }
+}
+
+export function find(arr, predicate) {
+  let value;
+  for (let i = 0; i < arr.length; ++i) {
+    if (predicate(value = arr[i]))
+      return value;
+  }
+  return undefined;
+}
+
+export function isFunction(x) {
+  return x instanceof Function;
+}
+
+export function isObject(x) {
+  return x !== null && typeof x === 'object';
 }

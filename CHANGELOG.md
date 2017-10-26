@@ -1,3 +1,6 @@
+# New features
+
+## Nested actions
 
 # Breaking changes
 
