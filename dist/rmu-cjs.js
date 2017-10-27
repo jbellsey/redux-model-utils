@@ -430,27 +430,29 @@ function mergeReactSelectors() {
   };
 }
 
-// create a direct getter for accessing the underlying model: "model.data.property".
-// "model.data" will return the entire state tree for a given model. use cautiosly,
-// as it's the actual state, not a copy.
+// create direct getters for accessing the underlying model: "model.data.property"
+// one accessor is created for each selector in your list (and with the same name)
+// we also create a top-level accessor "model.allData" to retrieve the full state.
 //
 function buildAccessors(model) {
 
-  Object.defineProperty(model, 'data', {
+  model.data = {};
+
+  // each selector gets an accessor on model.data
+  Object.keys(model.selectors).forEach(function (key) {
+    Object.defineProperty(model.data, key, {
+      get: function get$$1() {
+        var state = getStore().getState();
+        return lookup(state, model.selectors[key], model.name);
+      }
+    });
+  });
+
+  Object.defineProperty(model, 'allData', {
     get: function get$$1() {
       var state = getStore().getState(),
           subState = state[model.name];
-
-      // this test should always be true
       return (typeof subState === 'undefined' ? 'undefined' : _typeof(subState)) === 'object' ? subState : state;
-    }
-  });
-
-  // earlier versions of this library exposed "allData", which did the same thing.
-  Object.defineProperty(model, 'allData', {
-    get: function get$$1() {
-      console.warn('Warning: the "allData" accessor is deprecated. Use model.data instead.');
-      return model.data;
     }
   });
 }
@@ -467,7 +469,7 @@ function mapActions(actionMap, namespace, mapInfo) {
 
   Object.keys(actionMap).forEach(function (key) {
     var actionDetails = actionMap[key],
-        code = namespace + '~' + key,
+        code = namespace + '/' + key,
         params = actionDetails.params,
         async = actionDetails.async,
         thunk = actionDetails.thunk,
@@ -507,7 +509,7 @@ function mapActions(actionMap, namespace, mapInfo) {
     if (Object.keys(subActions).length > 0) {
       // set up mapInfo at the new nest level
       mapInfo.actionTree = actionTree[key] = actionMethod || {};
-      mapInfo.privateTree = privateTree[key] = actionMethod || {};
+      mapInfo.privateTree = privateTree[key] = actionMethod || {}; // (yes, this needs its own empty object)
 
       // scan all of the sub-actions
       mapActions(actionDetails, key, mapInfo);
@@ -619,18 +621,24 @@ function subscribe(selector, cb) {
 
 var allModelNames = [];
 
-// modify the public API for each model.
-//
-function modelBuilder(model) {
+function validateAndCleanup(model) {
 
   if (allModelNames.indexOf(model.name) !== -1) throw new Error('redux-model-utils: Two models have the same name (' + model.name + ')');else allModelNames.push(model.name);
 
   // pre cleanup
   if (!model.options) model.options = {};
+  if (!model.selectors) model.selectors = {};
+}
+
+// modify the public API for each model.
+//
+function modelBuilder(model) {
+
+  validateAndCleanup(model);
 
   // juice the model name, for conflict-free living
   model.rawName = model.name;
-  model.name = 'model$_' + model.name;
+  model.name = '$/' + model.name;
 
   //----------
   // merge in common functionality for all models

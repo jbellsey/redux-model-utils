@@ -24,7 +24,7 @@ describe('MODEL module:', () => {
 describe('DATA ACCESSORS module:', () => {
 
   let initial   = {
-        userID: 0,
+        userID: 33,
         prefs:  {
           color: 'red',
           size:  'large'
@@ -34,12 +34,21 @@ describe('DATA ACCESSORS module:', () => {
         name:         'accessors-model',
         actionMap:    {},
         initialState: clone(initial),
-        selectors:    {}
+        selectors:    {
+          color: 'prefs.color',
+          id:    state => `User#${state.userID}`
+        }
       },
       model = modelBuilder(modelSeed);
 
-  it('passes back the full model state on "data"', () => {
+  it('passes back the full model state on "allData"', () => {
     mockStore(model);
-    expect(model.data.prefs.color).toBe('red');
+    expect(model.allData.prefs.color).toBe('red');
+  });
+
+  it('passes back data for each selector on "data"', () => {
+    mockStore(model);
+    expect(model.data.color).toBe('red');
+    expect(model.data.id).toBe('User#33');
   });
 });

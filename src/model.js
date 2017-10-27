@@ -5,9 +5,7 @@ import subscribe from './subscribe';
 
 let allModelNames = [];
 
-// modify the public API for each model.
-//
-export function modelBuilder(model) {
+function validateAndCleanup(model) {
 
   if (allModelNames.indexOf(model.name) !== -1)
     throw new Error(`redux-model-utils: Two models have the same name (${model.name})`);
@@ -17,10 +15,19 @@ export function modelBuilder(model) {
   // pre cleanup
   if (!model.options)
     model.options = {};
+  if (!model.selectors)
+    model.selectors = {};
+}
+
+// modify the public API for each model.
+//
+export function modelBuilder(model) {
+
+  validateAndCleanup(model);
 
   // juice the model name, for conflict-free living
   model.rawName = model.name;
-  model.name = `model$_${model.name}`;
+  model.name = `$/${model.name}`;
 
   //----------
   // merge in common functionality for all models

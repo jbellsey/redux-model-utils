@@ -14,7 +14,7 @@ function mapActions(actionMap, namespace, mapInfo) {
   Object.keys(actionMap).forEach(key => {
 
     let actionDetails = actionMap[key],
-        code          = `${namespace}~${key}`,
+        code          = `${namespace}/${key}`,
         {params, async, thunk, reducer, private: isPrivateAction,   // these are the reserved words that indicate an action
           ...subActions} = actionDetails,   // everything else becomes a sub-action
         putHere, actionMethod;
@@ -56,7 +56,7 @@ function mapActions(actionMap, namespace, mapInfo) {
     if (Object.keys(subActions).length > 0) {
       // set up mapInfo at the new nest level
       mapInfo.actionTree  = actionTree[key]  = actionMethod || {};
-      mapInfo.privateTree = privateTree[key] = actionMethod || {};
+      mapInfo.privateTree = privateTree[key] = actionMethod || {};  // (yes, this needs its own empty object)
 
       // scan all of the sub-actions
       mapActions(actionDetails, key, mapInfo);
