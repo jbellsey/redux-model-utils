@@ -81,6 +81,7 @@ describe('ACTION MAP module:', () => {
             reducer: (state, {color}) => ({...state, prefs: {color}})
           },
           changeColorAndSize: {
+            code:    'catapult',
             params:  ['color', 'size'],
             reducer: (state, {color, size}) => ({...state, prefs: {color, size}})
           },
@@ -194,6 +195,7 @@ describe('NESTED actions', () => {
           },
           color: {
             reddish: {
+              code:    'reddify',  // a manually assigned code. not shared yet.
               reducer: state => ({...state, prefs: {color: 'reddish'}})
             },
             bluish: {
@@ -282,5 +284,133 @@ describe('NESTED actions', () => {
         expect(store.getModelState().workResult).toBe(303);
       })
       .then(done);
+  });
+});
+
+describe('SHARED ACTION TYPES & multiple models:', () => {
+
+  let sharedCodes = {
+        red:   'shared-red',
+        blue:  'shared-blue',
+        small: 'shared-small',
+        XL:    'shared-XL'
+      },
+      M1 = {
+        name:         'm1',
+        initialState: {prefs: {color: 'gray', size: 'large'}},
+        selectors:    {color: 'prefs.color', size: 'prefs.size'},
+        actionMap:    {
+          yellow: {
+            reducer: state => ({...state, prefs: {color: 'yellow'}})
+          },
+          sharedRed: {
+            code:    sharedCodes.red,
+            reducer: state => ({...state, prefs: {color: 'red'}})
+          },
+          sharedBlue: {
+            code:    sharedCodes.blue,
+            reducer: state => ({...state, prefs: {color: 'blue'}})
+          },
+          // shared codes in nested actions
+          size: {
+            sharedSmall: {
+              code:    sharedCodes.small,
+              reducer: state => ({...state, prefs: {size: 'small'}})
+            },
+            // and a private action that uses a shared action type
+            sharedXL: {
+              private: true,
+              code:    sharedCodes.XL,
+              reducer: state => ({...state, prefs: {size: 'XL'}})
+            }
+          }
+        }
+      },
+      M2 = {
+        name:         'm2',
+        initialState: {userData: {color: 'gray', size: 'large'}},
+        selectors:    {color: 'userData.color', size: 'userData.size'},
+        actionMap:    {
+          purple: {
+            reducer: state => ({...state, userData: {color: 'purple'}})
+          },
+          sharedRed: {
+            code:    sharedCodes.red,
+            reducer: state => ({...state, userData: {color: 'red'}})
+          },
+          sharedBlue: {
+            code:    sharedCodes.blue,
+            reducer: state => ({...state, userData: {color: 'blue'}})
+          },
+          // shared codes in nested actions
+          size: {
+            sharedSmall: {
+              code:    sharedCodes.small,
+              reducer: state => ({...state, userData: {size: 'small'}})
+            },
+            // this version of XL is not private
+            sharedXL: {
+              code:    sharedCodes.XL,
+              reducer: state => ({...state, userData: {size: 'XL'}})
+            }
+          }
+        }
+      };
+
+  describe('parses an action map and:', () => {
+
+    let store, model1, model2,
+        counter = 100;
+
+    beforeEach(() => {
+      ++counter;
+      M1.name = `M1-${counter}`;
+      M2.name = `M2-${counter}`;
+      model1  = modelBuilder(clone(M1));
+      model2  = modelBuilder(clone(M2));
+      store   = mockStore([model1, model2]);
+    });
+
+    it('run independent actions independently', () => {
+
+      model1.actions.yellow();
+      expect(model1.data.color).toBe('yellow');
+      expect(model2.data.color).toBe('gray');
+
+      model2.actions.purple();
+      expect(model1.data.color).toBe('yellow');
+      expect(model2.data.color).toBe('purple');
+    });
+
+    it('allows multiple models to share an action type, and to respond to the same action code', () => {
+
+      expect(model1.data.color).toBe('gray');
+      expect(model2.data.color).toBe('gray');
+
+      // one action, two models respond
+      model1.actions.sharedRed();
+      expect(model1.data.color).toBe('red');
+      expect(model2.data.color).toBe('red');
+
+      model2.actions.sharedBlue();
+      expect(model1.data.color).toBe('blue');
+      expect(model2.data.color).toBe('blue');
+    });
+
+    it('allows shared action types in nested and private actions', () => {
+
+      expect(model1.data.size).toBe('large');
+      expect(model2.data.size).toBe('large');
+
+      // one action, two models respond
+      model1.actions.size.sharedSmall();
+      expect(model1.data.size).toBe('small');
+      expect(model2.data.size).toBe('small');
+
+      model2.actions.size.sharedXL();
+      expect(model1.data.size).toBe('XL');
+      expect(model2.data.size).toBe('XL');
+    });
+
   });
 });

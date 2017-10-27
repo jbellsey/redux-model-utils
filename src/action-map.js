@@ -14,9 +14,15 @@ function mapActions(actionMap, namespace, mapInfo) {
   Object.keys(actionMap).forEach(key => {
 
     let actionDetails = actionMap[key],
-        code          = `${namespace}/${key}`,
-        {params, async, thunk, reducer, private: isPrivateAction,   // these are the reserved words that indicate an action
-          ...subActions} = actionDetails,   // everything else becomes a sub-action
+        {
+          // these are the reserved words that indicate an action
+          params, async, thunk, reducer,
+          code = `${namespace}/${key}`,
+          private: isPrivateAction,
+
+          // everything else becomes a sub-action
+          ...subActions
+        } = actionDetails,
         putHere, actionMethod;
 
     // first deal with the action at the top level of this object. it may or may not exist.
