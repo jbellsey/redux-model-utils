@@ -14,8 +14,8 @@ describe('MODEL module:', () => {
   it('refuses to create models with the same name', () => {
 
     const setup = () => {
-      modelBuilder(seed);
-      modelBuilder(seed);
+      modelBuilder(clone(seed));
+      modelBuilder(clone(seed));
     };
     expect(setup).toThrow();
   });
@@ -39,7 +39,7 @@ describe('DATA ACCESSORS module:', () => {
           id:    state => `User#${state.userID}`
         }
       },
-      model = modelBuilder(modelSeed);
+      model = modelBuilder(clone(modelSeed));
 
   it('passes back the full model state on "allData"', () => {
     mockStore(model);

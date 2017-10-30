@@ -12,6 +12,14 @@ function validateAndCleanup(model) {
   else
     allModelNames.push(model.name);
 
+  if (model.reducer) {
+    console.log('MASTER REDUCER:', model)
+    console.trace('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
+  }
+
+  if (!(model.actionMap || model.initialState))
+    console.error('redux-model-utils: You must provide actionMap and initialState objects.');
+
   // pre cleanup
   if (!model.options)
     model.options = {};
@@ -38,9 +46,8 @@ export function modelBuilder(model) {
   model.subscribe = subscribe;
 
   //----------
-  // the user can specify actions & reducer in the form of an actionMap; see above
-  if (model.actionMap && model.initialState)
-    parseActionMap(model);
+  // the user must specify actions & reducer in the form of an actionMap
+  parseActionMap(model);
 
   // TODO: make ez-selectors
   // i.e., if no selectors are provided, map the top level of the initialState object.

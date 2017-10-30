@@ -1,15 +1,12 @@
 import clone from 'clone';
 import assignDeep from 'assign-deep';
-import {makeActionCreator} from '../src/actions';
 import {modelBuilder} from '../src/model';
 import mockStore from './support/mock-store';
 import subscribe from '../src/subscribe';
 
 describe('SUBSCRIBE module:', () => {
 
-  let setColor  = makeActionCreator('setColor', 'col'),
-      setSize   = makeActionCreator('setSize', 'size'),
-      counter   = 0,
+  let counter   = 0,
       initial   = {
         userID: 0,
         prefs:  {
@@ -17,46 +14,29 @@ describe('SUBSCRIBE module:', () => {
           size:  'large'
         }
       },
-      selectors = {
-        color:    'prefs.color',
-        size:     'prefs.size',
-        colorFnc: state => state.prefs.color
-      },
-      reducer   = (state, action = {}) => {
-
-        if (!state)
-          state = clone(initial);
-
-        switch (action.type) {
-          case 'setColor':
-            return assignDeep({}, state, {prefs: {color: action.col}});
-
-          case 'setSize':
-            return assignDeep({}, state, {prefs: {size: action.size}});
-
-          default:
-            return state;
-        }
-      },
       modelSeed = {
-        actions:   {},
-        selectors: selectors,
-        reducer
+        initialState: initial,
+        actionMap: {
+          setColor: {
+            params: 'color',
+            reducer: (state, {color}) => assignDeep({}, state, {prefs: {color}})
+          },
+          setSize: {
+            params: 'size',
+            reducer: (state, {size}) => assignDeep({}, state, {prefs: {size}})
+          }
+        },
+        selectors: {
+          color:    'prefs.color',
+          size:     'prefs.size',
+          colorFnc: state => state.prefs.color
+        }
       },
       model;
 
   beforeEach(() => {
     modelSeed.name = `subscribe-model-${counter++}`;
     model = modelBuilder(clone(modelSeed));
-  });
-
-  //-----------
-
-  it('runs a basic reducer properly', () => {
-
-    let store = mockStore(model);
-    setColor('green');
-    expect(store.getModelState().prefs.color).toBe('green');
   });
 
   //-----------
@@ -69,15 +49,15 @@ describe('SUBSCRIBE module:', () => {
 
     model.subscribe(model.selectors.color, subscriber, {noInit: true});
 
-    setColor('yellow');
+    model.actions.setColor('yellow');
     expect(store.getModelState().prefs.color).toBe('yellow');
     expect(invocationCount).toBe(1);
 
-    setColor('turq');
+    model.actions.setColor('turq');
     expect(store.getModelState().prefs.color).toBe('turq');
     expect(invocationCount).toBe(2);
 
-    setSize('XXXL');
+    model.actions.setSize('XXXL');
     expect(invocationCount).toBe(2);
   });
 
@@ -89,15 +69,15 @@ describe('SUBSCRIBE module:', () => {
 
     model.subscribe(model.selectors.colorFnc, subscriber, {noInit: true});
 
-    setColor('kelly');
+    model.actions.setColor('kelly');
     expect(store.getModelState().prefs.color).toBe('kelly');
     expect(invocationCount).toBe(1);
 
-    setColor('royal');
+    model.actions.setColor('royal');
     expect(store.getModelState().prefs.color).toBe('royal');
     expect(invocationCount).toBe(2);
 
-    setSize('Petite');
+    model.actions.setSize('Petite');
     expect(invocationCount).toBe(2);
   });
 
@@ -111,7 +91,7 @@ describe('SUBSCRIBE module:', () => {
 
     expect(invocationCount).toBe(1);  // init
 
-    setColor('poiple');
+    model.actions.setColor('poiple');
     expect(invocationCount).toBe(2);
   });
 
@@ -125,7 +105,7 @@ describe('SUBSCRIBE module:', () => {
 
     mockStore(model);
     subscribe('prefs.color', cb, {noInit: 1});
-    setColor('mint');
+    model.actions.setColor('mint');
   });
 
   it('is only invoked when the specific property changes', () => {
@@ -134,15 +114,15 @@ describe('SUBSCRIBE module:', () => {
     mockStore(model);
 
     model.subscribe('prefs.color', () => ++colorInvocations, {noInit: true});
-    setColor('pink');
-    setColor('pink');
-    setColor('pink');
+    model.actions.setColor('pink');
+    model.actions.setColor('pink');
+    model.actions.setColor('pink');
     expect(colorInvocations).toBe(1);
-    setColor('goldenrod');
-    setColor('goldenrod');
+    model.actions.setColor('goldenrod');
+    model.actions.setColor('goldenrod');
     expect(colorInvocations).toBe(2);
-    setColor('pink');
-    setColor('pink');
+    model.actions.setColor('pink');
+    model.actions.setColor('pink');
     expect(colorInvocations).toBe(3);
   });
 
@@ -163,11 +143,11 @@ describe('SUBSCRIBE module:', () => {
       }
     );
 
-    setColor('bone');
+    model.actions.setColor('bone');
     expect(invokeCt).toEqual(1);
 
     // without a good equality test, the handler is invoked again (incorrectly)
-    setColor('bone');
+    model.actions.setColor('bone');
     expect(invokeCt).toEqual(2);
   });
 
@@ -186,15 +166,15 @@ describe('SUBSCRIBE module:', () => {
       }
     );
 
-    setColor('bone');
+    model.actions.setColor('bone');
     expect(invokeCt).toEqual(1);
     expect(store.getModelState().prefs.color).toEqual('bone');
 
-    setColor('bone');
+    model.actions.setColor('bone');
     expect(invokeCt).toEqual(1);    // no extra invocation
     expect(store.getModelState().prefs.color).toEqual('bone');
 
-    setColor('taupe');
+    model.actions.setColor('taupe');
     expect(invokeCt).toEqual(2);
     expect(store.getModelState().prefs.color).toEqual('taupe');
   });
