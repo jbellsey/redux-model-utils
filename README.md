@@ -17,37 +17,89 @@ you use this library.
 
 # Model-building patterns
 
-### Atomic actions and reducers
+This library takes Redux and wraps it in a thin, almost object-oriented facade.
+Each feature in your app can be represented by a single model, with its own private
+data and public methods.
 
-Here's an incomplete code snippet that shows something called an *action map*. An action map
-bundles together everything needed for a single, public, executable action. Witness:
+Behind the scenes, the methods dispatch actions and use reducers to reconcile the model data. 
+But from a user's perspective, this is an internal implementation detail. As a model user,
+you will never use the `dispatch` method, nor `mapStateToProps`, nor will you need
+to create action codes.
 
-```javascript
-let actionMap = {
-    // each key in the map is converted into an action-creator of the same name
-    addTodo: {
-        params: ['text'],           // parameters for the action creator
-        reducer(state, action) {    // atomic reducer for this one action
-            state.todos = [...state.todos, action.text];
-            return state;
-        }
-    },
-    removeTodo: {
-        // (similar)
-    }
-};
+Consider a simple user model. The following is pseudo-code, just to illustrate where we're going:
 
-// ... then later, in your view ...
-todoModel.actions.addTodo('Go for a soda');
+```js
+// private data:
+const userID = 0,
+      preferences = {
+        lang: 'en',
+        shirtSize: 'L'
+      };
+
+// public methods
+export function loadUser(id) {}
+export function saveUser() {}
+export function updateLanguagePref(newLang) {}
+
+// public accessors
+export const language = () => longLanguageName[this.lang];
+export const shirtSize = () => longSizeName[this.lang];
 ```
 
-No more `switch` statements in big reducers that handle multiple actions.
-No need for action codes. No need to do your own `dispatch`.
+Here's the skeletal representation using Redux Model Utilities. It's incomplete:
+```js
+const model = modelBuilder({
 
-This is true encapsulation for your models. Your actions and reducers are together,
-where they belong.
+  name: 'userModel',
 
-There are also tools for async actions, private actions, and more. Read the
+  // the store data
+  initialState: {
+    userID: 0,
+    preferences: {
+      lang:      'en',
+      shirtSize: 'L'
+    }
+  },
+
+  // the model's "methods". these are converted into callable functions on "actions".
+  // for example: model.actions.loadUser(88). the actions are typically passed to
+  // connected components as a prop (see below)
+  actionMap: {
+    loadUser: {
+      params: 'id',
+      reducer: (state, {id}) => state   // incomplete
+    },
+    saveUser: {/* ... */},
+    updateLanguagePref: {/* ... */}
+  },
+
+  // the following "selectors" are automatically passed as props to your connected components.
+  // selectors can expose data in raw form (directly from state) or manipulated.
+  selectors: {
+    language:  state => state.preferences.lang,
+    shirtSize: state => state.preferences.shirtSize,
+
+    // the following prop gives connected components direct access to the model's methods
+    // e.g., "this.props.actions.loadUser(0)"
+    actions:  () => model.actions
+  }
+});
+export default model;
+```
+
+## Why?
+
+This not only removes most of the Redux boilerplate. But it also gives you:
+
+* **Atomic reducers**. Each action has a single-purpose reducer. There are no
+  `switch` statements. (You can share action codes if you like, so you can have multiple
+  reducers handle the same action.)
+
+* **Encapsulation**. The model has everything it needs to manage a single feature in your app.
+  There are no separate `mapStateToProps` calls in container components, no separate action code
+  files, no lost reducers.
+
+There are also tools for async actions, private actions, shared actions, and more. Read the
 [full docs on actions](docs/actions.md).
 
 ### Easy connection to React components
@@ -57,25 +109,28 @@ No need to write `mapStateToProps` or `mapDispatchToProps`.
 It's all done for you when you connect a model to a component.
 
 ```javascript
-// selectors are described in detail later. briefly: they
-// are roadmaps that allow a consumer to retrieve
-// a property in the state. they also map to props when
-// you connect a model to a component.
+// selectors map to props when you connect a model to a component.
 //
 let selectors = {
-    todos:    state => state.todos,
-    listName: state => state.listName
+    language:  state => state.preferences.lang,
+    shirtSize: state => state.preferences.shirtSize,
+
+    // we typically export actions as a selector as well. you can rename
+    // it to "userActions" if you like, to avoid naming conflicts
+    actions:  () => model.actions
 };
 
-// ... then later, in your connected (smart) component ...
+// ... then later, in your connected component ...
 //
-class TodoList extends Component {
+class UserSettingsPage extends Component {
     render() {
-        // your component will get props that match your model's selectors
-        let {todos, listName} = this.props;
-        // ... etc
+        let {language, shirtSize, actions} = this.props;
+        // ...
+
+        return <button onClick={() => actions.saveUser()}>Save</button>
     }
 }
+export default connect(userModel.reactSelectors)(UserSettingsPage);
 ```
 
 Details in the [React docs](docs/react.md).
@@ -124,15 +179,6 @@ let unsubscribe = uiModel.subscribe(uiModel.selectors.fontSize, (newFontSize, ol
     console.log(`Font size changed from ${oldFontSize} to ${newFontSize}`);
 });
 ```
-
-### Instant functionality
-
-Adding a spinner to your async operations just got trivial. In one
-line of code, you can add two actions to your model (`wait()` and
-`stopWaiting()`) and a boolean flag to the store (`waiting`).
-
-The code required to add this feature is very simple, but needs some
-explanation, so we'll show it to you in a bit.
 
 
 # Learn more

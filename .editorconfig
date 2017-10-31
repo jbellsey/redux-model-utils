@@ -1,0 +1,19 @@
+# http://editorconfig.org
+
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+
+# Line ending file format: lf, crlf, cr
+end_of_line = lf
+
+# File character encoding: latin1, utf-8, utf-16be, utf-16le
+charset = utf-8
+
+# Denotes whether to trim whitespace at the end of lines
+trim_trailing_whitespace = true
+
+# Denotes whether file should end with a newline
+insert_final_newline = true
