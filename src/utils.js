@@ -32,15 +32,6 @@ export function lookup(obj, selector, modelName) {
   }
 }
 
-export function find(arr, predicate) {
-  let value;
-  for (let i = 0; i < arr.length; ++i) {
-    if (predicate(value = arr[i]))
-      return value;
-  }
-  return undefined;
-}
-
 export function isFunction(x) {
   return x instanceof Function;
 }

@@ -17,13 +17,8 @@ let model = {
     name,       // string
     selectors,  // object map; see below
 
-    // either:
     actionMap,  // a bundle that unpacks to your action creators and atomic reducers
     initialState,
-
-    // or:
-    reducer,    // your master reducer function (for all actions)
-    actions,    // list of action-creators
 
     //--- optional properties
 
@@ -44,22 +39,12 @@ One selector is needed for each observable property. You may also choose
 to define selectors for properties that are not externally observable, but are only
 needed inside the reducer. That's up to you.
 
-For your reducer and actions, you have two choices:
-
-* **Implicit**: You can provide an action map, which is a bundle
+You must provide an action map, which is a bundle
 that describes your action creators. Each action creator is packaged with an
 atomic reducer function for handling that one action.
-* **Explicit**: Alternatively, you can provide a list of actions (using `makeActionCreator`).
-If you do, you must also have a `reducer` property for your master reducer function.
-There is nothing special about its signature; just build a normal reducer. See the
-full example below.
 
 Read the full documentation on how to build actions and action maps
 [here](actions.md).
-
-You can optionally pass in a **magic trigger**. At present, there is only one:
-`waitable`. Setting this flags will install some custom actions
-and selectors on your model; details [here](magic.md).
 
 
 #### modelBuilder(model)

@@ -342,14 +342,6 @@ function lookup(obj, selector, modelName) {
   }
 }
 
-function find(arr, predicate) {
-  var value = void 0;
-  for (var i = 0; i < arr.length; ++i) {
-    if (predicate(value = arr[i])) return value;
-  }
-  return undefined;
-}
-
 function isFunction(x) {
   return x instanceof Function;
 }
@@ -383,11 +375,23 @@ function externalizeSelectors(selectors, model) {
       return map;
     }, {});
 
+    // add a selector for all this model's actions. this makes it less likely
+    // that you'll invoke an action directly on the model object. calling actions
+    // through props makes the component less coupled. it's also much easier to
+    // test, since stubbing a prop is trivial compared to stubbing the model as a whole.
+    //
+    props[model._rmu.rawName + '_actions'] = model._rmu.actionsProp;
+
     return namespace ? defineProperty({}, namespace, props) : props;
   };
 }
 
 function reactify(model) {
+
+  // this will become a prop on all connected components. see above.
+  model._rmu.actionsProp = function () {
+    return model.actions;
+  };
 
   // the default map of selectors to props
   model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
@@ -418,7 +422,7 @@ function mergeReactSelectors() {
 
       // is it a model? then pull its already-prepared reactSelectors.
       // otherwise, it's a propsMap that has already been reactified
-      if (oneObject._magic_rmu) oneObject = oneObject.reactSelectors;
+      if (oneObject._rmu) oneObject = oneObject.reactSelectors;
 
       Object.assign(props, oneObject(state));
     });
@@ -460,18 +464,20 @@ function isAction(obj) {
 function mapActions(actionMap, namespace, mapInfo) {
   var actionTree = mapInfo.actionTree,
       privateTree = mapInfo.privateTree,
-      listOfReducers = mapInfo.listOfReducers;
+      allReducers = mapInfo.allReducers,
+      model = mapInfo.model;
 
 
   Object.keys(actionMap).forEach(function (key) {
     var actionDetails = actionMap[key],
-        code = namespace + '/' + key,
         params = actionDetails.params,
         async = actionDetails.async,
         thunk = actionDetails.thunk,
         reducer = actionDetails.reducer,
+        _actionDetails$code = actionDetails.code,
+        code = _actionDetails$code === undefined ? namespace + '/' + key : _actionDetails$code,
         isPrivateAction = actionDetails.private,
-        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'private']),
+        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'code', 'private']),
         putHere = void 0,
         actionMethod = void 0;
 
@@ -490,10 +496,8 @@ function mapActions(actionMap, namespace, mapInfo) {
         actionMethod = makeActionCreator.apply(undefined, [code].concat(toConsumableArray(params)));
 
         // install the reducer. private reducers go here as well
-        listOfReducers.push({
-          code: code,
-          fnc: reducer
-        });
+        if (allReducers[code]) console.warn('redux-model-utils: multiple reducers are installed on model[' + model.name + '] for action code = "' + code + '"');
+        allReducers[code] = reducer;
       }
       putHere[key] = actionMethod;
     }
@@ -523,9 +527,10 @@ function parseActionMap(model) {
   // a giant return value
   //
   var mapInfo = {
+    model: model,
     actionTree: {},
     privateTree: {},
-    listOfReducers: [],
+    allReducers: {},
     anyPrivate: false
   };
 
@@ -533,18 +538,13 @@ function parseActionMap(model) {
 
   // the output of the actionMap: public actions, private actions, and a single master reducer
   model.actions = mapInfo.actionTree;
-  model.privateActions = mapInfo.privateTree;
+  model._rmu.privateActions = mapInfo.privateTree;
   model.reducer = function () {
     var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : model.initialState;
     var action = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-
-    var matcher = function matcher(reducer) {
-      return reducer.code === action.type;
-    },
-        reducerInfo = find(mapInfo.listOfReducers, matcher);
-
-    if (reducerInfo) state = reducerInfo.fnc(state, action);
+    var reducer = mapInfo.allReducers[action.type];
+    if (reducer) state = reducer(state, action);
     return state;
   };
 
@@ -554,8 +554,8 @@ function parseActionMap(model) {
   //
   if (mapInfo.anyPrivate) {
     model.severPrivateActions = function () {
-      var trulyPrivateActions = model.privateActions;
-      model.privateActions = null;
+      var trulyPrivateActions = model._rmu.privateActions;
+      model._rmu.privateActions = model.severPrivateActions = null;
       return trulyPrivateActions;
     };
   }
@@ -590,7 +590,7 @@ function subscribe(selector, cb) {
 
 
   var previousValue = void 0,
-      modelName = this && this._magic_rmu ? this.name : '',
+      modelName = this && this._rmu ? this.name : '',
       equals = opts.equals || function (a, b) {
     return a === b;
   },
@@ -621,6 +621,13 @@ function validateAndCleanup(model) {
 
   if (allModelNames.indexOf(model.name) !== -1) throw new Error('redux-model-utils: Two models have the same name (' + model.name + ')');else allModelNames.push(model.name);
 
+  if (model.reducer) {
+    console.log('MASTER REDUCER:', model);
+    console.trace('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
+  }
+
+  if (!(model.actionMap || model.initialState)) console.error('redux-model-utils: You must provide actionMap and initialState objects.');
+
   // pre cleanup
   if (!model.options) model.options = {};
   if (!model.selectors) model.selectors = {};
@@ -632,21 +639,16 @@ function modelBuilder(model) {
 
   validateAndCleanup(model);
 
-  // juice the model name, for conflict-free living
-  model.rawName = model.name;
-  model.name = '$/' + model.name;
-
-  //----------
-  // merge in common functionality for all models
-  //
+  // the presence of this key is an indicator. it also contains our private stuff.
+  model._rmu = {};
 
   // pass through the subscribe method, so views don't have to import this library
   //
   model.subscribe = subscribe;
 
   //----------
-  // the user can specify actions & reducer in the form of an actionMap; see above
-  if (model.actionMap && model.initialState) parseActionMap(model);
+  // the user must specify actions & reducer in the form of an actionMap
+  parseActionMap(model);
 
   // TODO: make ez-selectors
   // i.e., if no selectors are provided, map the top level of the initialState object.
@@ -661,11 +663,6 @@ function modelBuilder(model) {
   //----------
   // build a list of accessors for getting the underlying data
   buildAccessors(model);
-
-  //----------
-  // close it up!
-  //
-  model._magic_rmu = true;
 
   return model;
 }

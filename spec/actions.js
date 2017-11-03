@@ -145,20 +145,22 @@ describe('ACTION MAP module:', () => {
 
     it('keeps private actions separate', () => {
       expect(model.actions.privateAction).not.toBeDefined();
-      expect(model.privateActions.privateAction).toBeDefined();
+
+      // users should never access _rmu directly. this is an internal test only.
+      expect(model._rmu.privateActions.privateAction).toBeDefined();
     });
 
     it('runs private actions properly', done => {
-      model.privateActions.privateAction();
+      model._rmu.privateActions.privateAction();
       expect(store.getModelState().prefs.color).toBe('peacock');
-      model.privateActions.privateAsync().then(done);
+      model._rmu.privateActions.privateAsync().then(done);
     });
 
     it('allows privateActions object to be severed from the model', () => {
       const trulyPrivateActions = model.severPrivateActions();
 
       // should be disconnected from the model
-      expect(model.privateActions).toBeNull();
+      expect(model._rmu.privateActions).toBeNull();
 
       // should run when called from our truly private object
       trulyPrivateActions.anotherPrivateAction();

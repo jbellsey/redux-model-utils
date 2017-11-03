@@ -1,14 +1,11 @@
 
-# Actions & action maps
-
-There are two ways to bundle actions into your model. You can either use
-a standard style of redux action creators (with their monolithic reducer
-functions, public action codes, etc.), or you can create an action map
-with atomic reducer functions (one reducer per action).
-
-Action maps are way better. So we'll describe them first.
-
 # Action maps
+
+We expose some basic factory functions (e.g., `makeActionCreator`). However,
+the power of this library is in the creation of action maps. They free you
+from creating custom action codes and monolithic reducers.
+
+(Most of this doc is a guide. There is a reference at the bottom of this file.)
 
 ### Action map example
 
@@ -20,23 +17,26 @@ Here again is the example from earlier:
 
 ```javascript
 let actionMap = {
-    addTodo: {
-        params: ['text'],           // parameters for the action creator
-        reducer(state, action) {    // each reducer handles only a single action
-            state.todos = [...state.todos, action.text];
-            return state;
-        }
-    },
-    removeTodo: {
-        params: ['index'],
-        reducer(state, action) {
-            state.todos = [
-                ...state.todos.slice(0, action.index),
-                ...state.todos.slice(action.index + 1)
-            ];
-            return state;
-        }
+  addTodo: {
+    // parameters for the action creator
+    params: ['text'],
+
+    // each reducer handles only a single action
+    reducer(state, action) {
+      state.todos = [...state.todos, action.text];
+      return state;
     }
+  },
+  removeTodo: {
+    params: ['index'],
+    reducer(state, action) {
+      state.todos = [
+        ...state.todos.slice(0, action.index),
+        ...state.todos.slice(action.index + 1)
+      ];
+      return state;
+    }
+  }
 };
 ```
 
@@ -154,7 +154,48 @@ let actionMap = {
     // synchronous actions
     storeUserData: {
         params: 'data',
-        reducer: (state, params) => {/* ... */}
+        reducer: (state, action) => {/* ... */}
+    },
+    storeDeviceData: {
+        params: 'data',
+        reducer: (state, action) => {/* ... */}
+    },
+
+    // thunk. not async.
+    storeAllData: {
+        params: ['userData', 'deviceData'],
+        thunk: params => {
+            model.actions.storeUserData(params.userData);
+            model.actions.storeDeviceData(params.deviceData);
+        }
+    }
+};
+```
+
+### About action codes
+
+Action codes are created for you automatically. You should not rely on
+them; think of them as an internal impelementation detail.
+
+However, you can override this behavior, and manually assign your own
+action code. This is useful for two main reasons:
+
+* If you have a hybrid Redux installation, where some actions are dispatched
+  by a part of the app that is unaware of Redux Model Utils. By manually assigning
+  the code for an action, you can have your model listen for such actions.
+* If you want multiple reducers (in different models) to respond to the same
+  action. In this case, assign the same code to both handlers, and both reducers
+  will be invoked.
+  
+To manually assign an action code, use the `code` property on an action definition:
+
+```javascript
+let actionMap = {
+
+    addNotification: {
+        code:   'MISC/NOTIFICATION/ADD',  // your own custom action code
+        params: 'newNotification',
+        reducer: (state, action) => {/* ... */}
     },
     storeDeviceData: {
         params: 'data',
@@ -171,23 +212,6 @@ let actionMap = {
     }
 };
 ```
-
-### About action codes
-
-The action codes for actions built from an action map are private.
-You should not write code that depends on these internal action codes.
-
-Because codes are not shared, other reducers cannot handle actions
-created by an action map. If your application needs to have multiple
-reducers handle a single action, you have a few options.
-
-First, use the `subscribe` option. Instead of writing code inside
-a reducer, build a callback handler that watches a value in your model for
-changes. When the model changes, your callback is invoked, and you
-can issue other actions.
-
-If that isn't an option, and you truly need public action codes that can
-be handled by multiple reducers, you can't use an action map. See below.
 
 ### Private actions inside an action map
 
@@ -207,36 +231,36 @@ from the model's main `actions` object.
 ```javascript
 let actionMap = {
 
-        // this action is private. it's called after the (public) save
-        // operation is complete
-        _storeData: {
-            private: true,  // flag it
-            params: 'data',
-            reducer: (state, action) => {
-                state = clone(state);
-                state.data = action.data;
-            }
-        },
-
-        // this is the public interface for saving data. when the
-        // api returns, we call the private action, to merge the
-        // new data into the store
-        save: {
-            params: 'recordID',
-            async(params) {
-                // note that the private action is not attached to the model
-                return api.save(params.recordID).then(
-                    data => privateActions._storeData(data)
-                )
-            }
+    // this action is private. it's called after the (public) save
+    // operation is complete
+    _storeData: {
+        private: true,  // flag it
+        params: 'data',
+        reducer: (state, action) => {
+            state = clone(state);
+            state.data = action.data;
         }
     },
 
-    model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
+    // this is the public interface for saving data. when the
+    // api returns, we call the private action, to merge the
+    // new data into the store
+    save: {
+        params: 'recordID',
+        async(params) {
+            // note that the private action is not attached to the model
+            return api.save(params.recordID).then(
+                data => privateActions._storeData(data)
+            )
+        }
+    }
+},
 
-    // here we remove the private actions from the model, and attach
-    // them to a local variable which is only accessible inside this module
-    privateActions = model.severPrivateActions();
+model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
+
+// here we remove the private actions from the model, and attach
+// them to a local variable which is only accessible inside this module
+privateActions = model.severPrivateActions();
 
 // ... then later, in your view ...
 model.actions.save(44).then(closeForm);
@@ -245,94 +269,72 @@ model.actions.save(44).then(closeForm);
 model.actions._storeData({});
 ```
 
+### Nested actions
 
-# Normal action-creators
-
-You don't actually need to use action maps. But you should! But you don't need to,
-so here's how you can build models with a more "stock" implementation.
-
-We provide a utility called `makeActionCreator`, which -- this will shock you --
-builds an action creator. As with all actions you build with this library,
-it is automatically dispatched for you.
-
-Here's the same example from above, rewritten with public actions:
+You can organize your action map however you like. Actions can be nested, giving you the
+flexibility to group actions together.
 
 ```javascript
-const
-    reduxModelUtils = require('redux-model-utils'),
+let actionMap = {
 
-    initialState = {
-        todos: []
+  // watch the nesting:
+  user: {
+    load: {
+      params: 'id',
+      async: ({id}) => apiCall(id).then(userData => {
+        privateActions.user.load._store(userData)
+      }),
+
+      // private action used only here to store the result of the query
+      _store: {
+        params: 'userData',
+        reducer: () => {}
+      }
     },
-    selectors = {
-        todos: 'todos'
-    },
-
-    // these codes aren't exported in this example. but they can easily
-    // be moved to a separate module (e.g., "actionCodes.js") for sharing
-    actionCodes = {
-        TODO_ADD:    'TODO_ADD',
-        TODO_REMOVE: 'TODO_REMOVE'
-    },
-    // here we build the public action-creators, using the action codes above.
-    // the parameters for the action-creator are described here as well
-    actions = {
-        addTodo:    reduxModelUtils.makeActionCreator(actionCodes.TODO_ADD,    'text'),
-        removeTodo: reduxModelUtils.makeActionCreator(actionCodes.TODO_REMOVE, 'index')
-    };
-
-// here we build a normal, monolithic reducer which handles multiple actions
-//
-function reducer(state = initialState, action = {}) {
-
-    switch (action.type) {
-
-        case actionCodes.TODO_ADD:
-            state.todos = [...state.todos, action.text];
-            return state;
-
-        case actionCodes.TODO_REMOVE:
-            state.todos = [
-                ...state.todos.slice(0, action.index),
-                ...state.todos.slice(action.index + 1)
-            ];
-            return state;
+    save: {
+      params: 'userData',
+      async: () => {}
     }
-    return state;
-}
+  },
 
-module.exports = reduxModelUtils.modelBuilder({
-    name: 'todos',
-    selectors,
+  prefs: {
+    save: {
+      params: 'prefs',
+      async: () => {}
+    }
+  }
+};
 
-    // here we export "actions" and "reducer",
-    // rather than "actionMap" and "initialState"
-    actions,
-    reducer
-});
+/*
+  this will create the following actions:
+
+      model.user.load(id)
+      privateActions.user.load._store(userData)
+      model.user.save(userData)
+
+      model.prefs.save(prefs)
+*/
 ```
 
-This looks more like standard Redux. We only added one convenience function
-(`makeActionCreator`), which is something most Redux applications do anyway.
+## Summary
 
-The action codes can now be shared with other reducers, since they aren't
-private or managed internally by the library. Simply move the definition of
-the codes to another module so they can be imported wherever you need them.
+Each action definition can have one or more of the following keys:
 
-Notice that we provided a single monolithic reducer, and attached that directly
-to the model.
+* `params`: an array of strings (parameter names) passed to the action (or thunk). If there is exactly
+  one parameter, you can use a string instead of an array.
 
-### Asynchronous actions
+* `reducer`: the atomic reducer for this action. Like any reducer in Redux, it is a pure function that takes
+   two parameters: `state` and `action`.
 
-Instead of `makeActionCreator`, use `makeAsyncAction`, which takes a callback
-and a list of parameter names:
+* `async` or `thunk`: these are synonyms, and they are mutually exclusive, along with `reducer`. (You must provide
+   exactly one key out of the three.) You do not modify the store directly in an async thunk. Instead, you can run
+   asynchronous operations and fire off normal actions as needed. It takes a single parameter, an object containing
+   the parameters defined in `params`. The return value of your thunk is passed back to the caller, to make it easy
+   to chain promises.
 
-```javascript
-let callback = args => fetch(`http://myapi.com/u/${args.userID}`),
-    loadUser = reduxModelUtils.makeAsyncAction(callback, 'userID');
+* `code`: optionally indicate the action code to be used for this action. See the discussion above.
 
-// ... then later ...
-userModel.loadUser(4).then(displayUserData);
-```
+* `private`: a boolean. If true, the action will be marked as private, and included in the object returned
+   by `severPrivateActions`, as described above.
 
-A fuller example and more details are in the [API docs](api-model.md).
+If you include any other keys in an action definition, they must be objects that are also action maps.

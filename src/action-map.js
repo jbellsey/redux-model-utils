@@ -1,5 +1,5 @@
 import {makeActionCreator, makeAsyncAction} from './actions';
-import {find, isObject, isFunction} from './utils';
+import {isObject, isFunction} from './utils';
 
 
 function isAction(obj) {
@@ -9,7 +9,7 @@ function isAction(obj) {
 
 function mapActions(actionMap, namespace, mapInfo) {
 
-  let {actionTree, privateTree, listOfReducers} = mapInfo;
+  let {actionTree, privateTree, allReducers, model} = mapInfo;
 
   Object.keys(actionMap).forEach(key => {
 
@@ -47,10 +47,9 @@ function mapActions(actionMap, namespace, mapInfo) {
         actionMethod = makeActionCreator(code, ...params);
 
         // install the reducer. private reducers go here as well
-        listOfReducers.push({
-          code,
-          fnc: reducer
-        });
+        if (allReducers[code])
+          console.warn(`redux-model-utils: multiple reducers are installed on model[${model.name}] for action code = "${code}"`);
+        allReducers[code] = reducer;
       }
       putHere[key] = actionMethod;
     }
@@ -80,24 +79,22 @@ export default function parseActionMap(model) {
   // a giant return value
   //
   let mapInfo = {
-    actionTree:     {},
-    privateTree:    {},
-    listOfReducers: [],
-    anyPrivate:     false
+    model,
+    actionTree:  {},
+    privateTree: {},
+    allReducers: {},
+    anyPrivate:  false
   };
 
   mapActions(model.actionMap, model.name, mapInfo);
 
   // the output of the actionMap: public actions, private actions, and a single master reducer
   model.actions = mapInfo.actionTree;
-  model.privateActions = mapInfo.privateTree;
+  model._rmu.privateActions = mapInfo.privateTree;
   model.reducer = (state = model.initialState, action = {}) => {
-
-    let matcher     = reducer => reducer.code === action.type,
-        reducerInfo = find(mapInfo.listOfReducers, matcher);
-
-    if (reducerInfo)
-      state = reducerInfo.fnc(state, action);
+    const reducer = mapInfo.allReducers[action.type];
+    if (reducer)
+      state = reducer(state, action);
     return state;
   };
 
@@ -107,8 +104,8 @@ export default function parseActionMap(model) {
   //
   if (mapInfo.anyPrivate) {
     model.severPrivateActions = () => {
-      let trulyPrivateActions = model.privateActions;
-      model.privateActions = null;
+      const trulyPrivateActions = model._rmu.privateActions;
+      model._rmu.privateActions = model.severPrivateActions = null;
       return trulyPrivateActions;
     }
   }

@@ -37,7 +37,7 @@ let functionSelectors = {
 
 # React
 
-The selectors are also used when connecting your model to a component.
+The selectors are used when connecting your model to a component.
 See [react.md](our React docs).
 
 # Data accessors

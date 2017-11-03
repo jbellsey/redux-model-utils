@@ -33,13 +33,8 @@ export function modelBuilder(model) {
 
   validateAndCleanup(model);
 
-  // juice the model name, for conflict-free living
-  model.rawName = model.name;
-  model.name = `$/${model.name}`;
-
-  //----------
-  // merge in common functionality for all models
-  //
+  // the presence of this key is an indicator. it also contains our private stuff.
+  model._rmu = {};
 
   // pass through the subscribe method, so views don't have to import this library
   //
@@ -62,11 +57,6 @@ export function modelBuilder(model) {
   //----------
   // build a list of accessors for getting the underlying data
   buildAccessors(model);
-
-  //----------
-  // close it up!
-  //
-  model._magic_rmu = true;
 
   return model;
 }

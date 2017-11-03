@@ -17,13 +17,15 @@ The result is an object like this, which is ready to be passed
 to the Redux call `combineReducers`:
 
 ```javascript
-reducerMap = {
-    'geo':    geo.reducer,
-    'reddit': reddit.reducer
+// build a reducer map from all models in your application
+const reducerMap = buildReducerMap(geo, reddit);
+
+// manual alternative:
+const manualReducerMap = {
+  'geo':    geo.reducer,
+  'reddit': reddit.reducer
 }
 ```
-
-You can do this manually if you prefer.
 
 #### setStore(store)
 

@@ -25,11 +25,21 @@ function externalizeSelectors(selectors, model) {
       return map;
     }, {});
 
+    // add a selector for all this model's actions. this makes it less likely
+    // that you'll invoke an action directly on the model object. calling actions
+    // through props makes the component less coupled. it's also much easier to
+    // test, since stubbing a prop is trivial compared to stubbing the model as a whole.
+    //
+    props[`${modelName}_actions`] = model._rmu.actionsProp;
+
     return namespace ? {[namespace]: props} : props;
   };
 }
 
 export function reactify(model) {
+
+  // this will become a prop on all connected components. see above.
+  model._rmu.actionsProp = () => model.actions;
 
   // the default map of selectors to props
   model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
@@ -57,7 +67,7 @@ export function mergeReactSelectors(...objects) {
 
       // is it a model? then pull its already-prepared reactSelectors.
       // otherwise, it's a propsMap that has already been reactified
-      if (oneObject._magic_rmu)
+      if (oneObject._rmu)
         oneObject = oneObject.reactSelectors;
 
       Object.assign(props, oneObject(state));

@@ -28,7 +28,7 @@ import {lookup} from './utils';
 export default function subscribe(selector, cb, opts = {}) {
 
   let previousValue,
-      modelName = (this && this._magic_rmu) ? this.name : '',
+      modelName = (this && this._rmu) ? this.name : '',
       equals    = opts.equals || ((a, b) => a === b),
       val       = () => lookup(getStore().getState(), selector, modelName),
       handler   = () => {
