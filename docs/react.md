@@ -1,4 +1,3 @@
-
 # Usage with React
 
 This library was designed to make Redux more usable in all your apps, whether or
@@ -17,32 +16,37 @@ Here's a fuller example:
 // YOUR MODEL.js
 //
 let selectors = {
-    // each selector will become a prop passed to your component
-    todos:    state => state.todos,
-    listName: state => state.listName
-};
-let initialState = {
-    todos: [],
-    listName: ''
-};
-let actionMap = {
-    add: {
+      // each selector will become a prop passed to your component
+      todos:    state => state.todos,
+      listName: state => state.listName,
+
+      // expose the model's actions as a prop, so views don't have to
+      // import the model code just to invoke an action. easier to test too.
+      todoActions: () => model.actions
+    },
+    initialState = {
+      todos: [],
+      listName: ''
+    },
+    actionMap = {
+      add: {
         params: 'text',
         reducer: (state, action) => {
-           state.todos = [...state.todos, action.text];
-           return state;
+          state.todos = [...state.todos, action.text];
+          return state;
         }
-    },
-    setListName: {
+      },
+      setListName: {
         params: 'name',
         reducer: (state, action) => Object.assign(state, {listName: params.name})
-    }
-}
+      }
+    };
+
 export let todoModel = reduxModelUtils.modelBuilder({
     name: 'todos',
-    actionMap,
+    actionMap,  // <= internally converted into "actions"
     initialState,
-    selectors   // <= a new map "reactSelectors" will be created for you
+    selectors   // <= internally converted into "reactSelectors"
 });
 ```
 ```javascript
@@ -57,17 +61,25 @@ class TodoList extends Component {
 
     // ~ snip ~
 
-    // you can call your model's actions inside event handlers
+    // you can call your model's actions inside event handlers.
+    // notice we're getting the actions from a prop, rather than
+    // invoking it directly from todoModel
+    //
     addNote() {
-        todoModel.actions.add('Build an app');
+        const {todoActions} = this.props;
+        todoActions.add('Build an app');
     }
 
     render() {
         // your component will get props that match your model's selectors
-        let {todos, listName} = this.props;
+        const {todos, listName, todoActions} = this.props;
         // ... etc
     }
 }
+
+// export the unconnected class for testing. you can easily pass in model data
+// as props, and stub model actions (since they're also just props)
+export {TodoList};
 
 // export the result of the connect function, provided by react-redux
 export default connect(
@@ -81,6 +93,7 @@ export default connect(
 That's it. To recap:
 
 * Build your selector map to include anything you need as a prop
+* Ensure your model's actions are also exported as a selector
 * Use your model's `reactSelectors` object (which is created for you) in the `connect()` function of react-redux
 * There should be no need to write your own `mapStateToProps` or `mapDispatchToProps` functions for `connect`
 
@@ -98,6 +111,39 @@ let selectors = {
 ```
 
 This will pass two array props to your component.
+
+## Preventing collisions with custom namespaces
+
+Each selector is mapped to a prop with the corresponding name. This is normally fine, as long
+as you name selectors well. However, naming things is hard, and you may well run into a prop-name
+collision at some point.
+
+In order to prevent this, you can namespace your props:
+
+```javascript
+// YOUR COMPONENT.js
+//
+class TodoList extends Component {
+    render() {
+        // model props are now inside "todoProps"
+        const {todos, listName, todoActions} = this.props.todoProps;
+        // ...
+    }
+}
+```
+
+The namespace is set in the model's `options` object, using the `propsNamespace` key:
+
+```js
+export let todoModel = reduxModelUtils.modelBuilder({
+    name: 'todos',
+    // ...
+    options: {
+      propsNamespace: 'todoProps'
+    }
+});
+```
+
 
 ### One component, many models
 

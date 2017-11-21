@@ -30,9 +30,9 @@ describe('REACT module:', () => {
         }
       },
       model,
-      makeModel = (seed = modelSeed) => {
+      makeModel = (seed = modelSeed, name = `react-model-${counter++}`) => {
         seed = clone(seed);
-        seed.name = `react-model-${counter++}`;
+        seed.name = name;
         return model = modelBuilder(seed)
       };
 
@@ -148,5 +148,36 @@ describe('REACT module:', () => {
         mergedProps = mergedMap(state);
     expect(mergedProps.firstLetterOfColor).toBe('r');
     expect(mergedProps.lastLetterOfColor).toBe('d');
+  });
+
+  it('applies the namespace to merged props maps correctly', () => {
+
+    // make two custom set of selectors
+    let modelDupe = clone(modelSeed);
+
+    // attach the custom selectors as propsMaps
+    modelDupe.options = {propsNamespace: 'catapult'};
+    modelDupe.propsMaps = {
+      firstOnly: { firstLetterOfColor: state => state.prefs.color.charAt(0) },
+      lastOnly:  { lastLetterOfColor: state => state.prefs.color.charAt(state.prefs.color.length - 1)}
+    };
+
+    let model = makeModel(modelDupe),
+        state = {[model.name]: clone(initial)};
+
+    // double-check our main reactSelectors (same test as above)
+    let connectedSelectors = model.reactSelectors(state);
+    expect(connectedSelectors.catapult.color).toBe('red');
+
+    // now test that the custom props map (not merged yet) have been individually namespaced
+    let customSelectorMap = model.propsMaps.firstOnly(state);
+    expect(customSelectorMap.catapult.firstLetterOfColor).toBe('r');
+    expect(customSelectorMap.catapult.lastLetterOfColor).toBeUndefined();
+
+    // test a merged version
+    let mergedMap = mergeReactSelectors(model.propsMaps.firstOnly, model.propsMaps.lastOnly),
+        mergedProps = mergedMap(state);
+    expect(mergedProps.catapult.firstLetterOfColor).toBe('r');
+    expect(mergedProps.catapult.lastLetterOfColor).toBe('d');
   });
 });

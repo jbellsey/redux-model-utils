@@ -81,7 +81,7 @@ describe('ACTION MAP module:', () => {
             reducer: (state, {color}) => ({...state, prefs: {color}})
           },
           changeColorAndSize: {
-            code:    'catapult',
+            actionType:    'catapult',
             params:  ['color', 'size'],
             reducer: (state, {color, size}) => ({...state, prefs: {color, size}})
           },
@@ -197,8 +197,8 @@ describe('NESTED actions', () => {
           },
           color: {
             reddish: {
-              code:    'reddify',  // a manually assigned code. not shared yet.
-              reducer: state => ({...state, prefs: {color: 'reddish'}})
+              actionType: 'reddify',  // a manually assigned actionType. not shared yet.
+              reducer:    state => ({...state, prefs: {color: 'reddish'}})
             },
             bluish: {
               reducer: state => ({...state, prefs: {color: 'bluish'}})
@@ -306,24 +306,24 @@ describe('SHARED ACTION TYPES & multiple models:', () => {
             reducer: state => ({...state, prefs: {color: 'yellow'}})
           },
           sharedRed: {
-            code:    sharedCodes.red,
-            reducer: state => ({...state, prefs: {color: 'red'}})
+            actionType: sharedCodes.red,
+            reducer:    state => ({...state, prefs: {color: 'red'}})
           },
           sharedBlue: {
-            code:    sharedCodes.blue,
-            reducer: state => ({...state, prefs: {color: 'blue'}})
+            actionType: sharedCodes.blue,
+            reducer:    state => ({...state, prefs: {color: 'blue'}})
           },
           // shared codes in nested actions
           size: {
             sharedSmall: {
-              code:    sharedCodes.small,
-              reducer: state => ({...state, prefs: {size: 'small'}})
+              actionType: sharedCodes.small,
+              reducer:    state => ({...state, prefs: {size: 'small'}})
             },
             // and a private action that uses a shared action type
             sharedXL: {
               private: true,
-              code:    sharedCodes.XL,
-              reducer: state => ({...state, prefs: {size: 'XL'}})
+              actionType: sharedCodes.XL,
+              reducer:    state => ({...state, prefs: {size: 'XL'}})
             }
           }
         }
@@ -337,23 +337,23 @@ describe('SHARED ACTION TYPES & multiple models:', () => {
             reducer: state => ({...state, userData: {color: 'purple'}})
           },
           sharedRed: {
-            code:    sharedCodes.red,
-            reducer: state => ({...state, userData: {color: 'red'}})
+            actionType: sharedCodes.red,
+            reducer:    state => ({...state, userData: {color: 'red'}})
           },
           sharedBlue: {
-            code:    sharedCodes.blue,
-            reducer: state => ({...state, userData: {color: 'blue'}})
+            actionType: sharedCodes.blue,
+            reducer:    state => ({...state, userData: {color: 'blue'}})
           },
           // shared codes in nested actions
           size: {
             sharedSmall: {
-              code:    sharedCodes.small,
-              reducer: state => ({...state, userData: {size: 'small'}})
+              actionType: sharedCodes.small,
+              reducer:    state => ({...state, userData: {size: 'small'}})
             },
             // this version of XL is not private
             sharedXL: {
-              code:    sharedCodes.XL,
-              reducer: state => ({...state, userData: {size: 'XL'}})
+              actionType: sharedCodes.XL,
+              reducer:    state => ({...state, userData: {size: 'XL'}})
             }
           }
         }
@@ -384,7 +384,7 @@ describe('SHARED ACTION TYPES & multiple models:', () => {
       expect(model2.data.color).toBe('purple');
     });
 
-    it('allows multiple models to share an action type, and to respond to the same action code', () => {
+    it('allows multiple models to share an action type, and to respond to the same action type', () => {
 
       expect(model1.data.color).toBe('gray');
       expect(model2.data.color).toBe('gray');

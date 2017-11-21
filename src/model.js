@@ -34,7 +34,10 @@ export function modelBuilder(model) {
   validateAndCleanup(model);
 
   // the presence of this key is an indicator. it also contains our private stuff.
-  model._rmu = {};
+  Object.defineProperty(model, '_rmu', {
+    enumerable: false,
+    value:      {}
+  });
 
   // pass through the subscribe method, so views don't have to import this library
   //

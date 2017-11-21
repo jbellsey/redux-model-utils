@@ -1,37 +1,16 @@
-# New features
 
-## Nested actions
+# 1.0
 
-# Breaking changes
+## New features
 
-## Accessors
-Direct accessors have been removed. In earlier versions,
-`model.data` was a set of `get()` methods that mapped
-from your selectors. Now it returns the full state object:
+* Nested actions
+* Custom action types
+* Props namespaces
 
-```js
-const state = {
-  prefs: {
-    size: 'large',
-    color: 'red'
-  }
-};
-const selectors = {
-  size: 'prefs.size'
-}
+## Breaking changes
 
-// OLD: each selector became a direct accessor on "data"
-let oldSize = model.data.size;
+* The "magic" model feature `waitable` has been removed. It is easy enough to build manually.
 
-// NEW: data now returns the full state tree for this model
-let newSize = model.data.prefs.size;
-``` 
+## Internal details
 
-This functionality was previously provided by the
-`allData` accessor, which is now deprecated.
-
-## Automatic model features
-
-Two "magic" model features have been removed: `waitable`
-and `undoable`. They are easy enough to build manually.
-
+* We now use Rollup for building, instead of gulp+browserify.

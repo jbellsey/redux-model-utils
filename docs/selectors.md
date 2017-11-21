@@ -11,17 +11,17 @@ A **string** selector is a representation of the path to the property in dot not
 A **function** selector maps a `state` object to a property nested inside.
 
 So for an object like this:
-```javascript
+```js
 let store = {
     userID: 0,
     preferences: {
-        colorScheme: 'dark',
-        fontSize: 'large'
+      colorScheme: 'dark',
+      fontSize: 'large'
     }
-};
+  };
 ```
 You would define selectors in one of these two ways:
-```javascript
+```js
 let stringSelectors = {
     userID:      'userID',
     colorScheme: 'preferences.colorScheme',
@@ -34,6 +34,38 @@ let functionSelectors = {
     fontSize:    state => state.preferences.fontSize
 };
 ```
+
+# Exposing actions as a selector
+
+In order to reduce coupling between your views and your models, we recommend
+exposing your model's actions as a selector:
+
+```js
+let selectors = {
+  userID:      state => state.userID,
+  userActions: () => model.actions
+};
+```
+
+This gives your component a new prop `userActions`, which has all of the
+actions from your model. Your views should invoke actions from here, rather
+than by using the model's actions directly:
+
+```js
+const LogoutButton = props => {
+
+  // call the action via its prop:
+  const clickHandler = props.userActions.logout;
+
+  // DO NOT DO THIS:
+  //  const clickHandler = userModel.actions.logout;
+  // as it is much harder to test a stubbed model than a stubbed prop
+
+  return <button onClick = {clickHandler}>Logout</button>;
+};
+```
+
+
 
 # React
 

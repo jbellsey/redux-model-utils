@@ -1,7 +1,7 @@
 
 # API: Config & setup tools
 
-These APIs will typically be used once in your app.
+These APIs will typically be used only once in your app.
 See the [full example](example.md) for a usable
 boilerplate showing how to configure this library.
 It's minimal.
@@ -18,7 +18,7 @@ to the Redux call `combineReducers`:
 
 ```javascript
 // build a reducer map from all models in your application
-const reducerMap = buildReducerMap(geo, reddit);
+const reducerMap = buildReducerMap(geo, reddit); 
 
 // manual alternative:
 const manualReducerMap = {

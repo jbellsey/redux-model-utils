@@ -10,7 +10,7 @@ Here's an outline of how every model will look.
 Details immediately below.
 
 ```javascript
-let model = {
+let rawModel = {
 
     //--- required properties
 
@@ -23,15 +23,15 @@ let model = {
     //--- optional properties
 
     options     // object; options for model creation
-}
+};
 
-// before exporting your model, run it through this munger. see below.
-module.exports = reduxModelUtils.modelBuilder(model);
+// before exporting your model, run it through this transformer. see below.
+let model = reduxModelUtils.modelBuilder(rawModel);
+
+export default model;
 ```
 
-You must provide a `name` for your model, which must be globally unique, but
-not necessarily sluggish. (I.e., it can have mixed case and/or punctuation. It's
-used as a key in a POJO.)
+You must provide a string `name` for your model, which must be unique across other models.
 
 You must provide a list of [selectors](selectors.md). These are strings or functions that are used
 to expose specific properties in your model's store.
@@ -53,7 +53,7 @@ You must run your model through this utility before exporting it. It has no
 options.
 
 ```javascript
-module.exports = reduxModelUtils.modelBuilder({
+export default reduxModelUtils.modelBuilder({
     name: "reddit",
     reducer,
     actions,
@@ -137,23 +137,24 @@ let actionMap = {
         secretAction: {
             private: true,
             params: 'data',
-            reducer: (state, action) => {
-                state = clone(state);
-                state.data = action.data;
-            }
+            reducer: (state, action) => ({...state, {data: action.data}})
         },
 
         publicAction: {
-            async() {
-                setTimeout(() => privateActions.secretAction({a:1}), 1);
+            thunk() {
+                // private actions are available only inside this module
+                privateActions.secretAction({a:1});
             }
         }
     },
 
-    model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
+    model = reduxModelUtils.modelBuilder( /* ... */ ),
 
-    // call sever; this can only be done once
+    // call "sever"; this can only be done once
     privateActions = model.severPrivateActions();
+
+export default model;
+
 
 // ... then later, in your view ...
 model.actions.publicAction();

@@ -17,7 +17,7 @@ function mapActions(actionMap, namespace, mapInfo) {
         {
           // these are the reserved words that indicate an action
           params, async, thunk, reducer,
-          code = `${namespace}/${key}`,
+          actionType = `${namespace}/${key}`,
           private: isPrivateAction,
 
           // everything else becomes a sub-action
@@ -44,12 +44,12 @@ function mapActions(actionMap, namespace, mapInfo) {
       if (asyncHandler)
         actionMethod = makeAsyncAction(asyncHandler, ...params);
       else {
-        actionMethod = makeActionCreator(code, ...params);
+        actionMethod = makeActionCreator(actionType, ...params);
 
         // install the reducer. private reducers go here as well
-        if (allReducers[code])
-          console.warn(`redux-model-utils: multiple reducers are installed on model[${model.name}] for action code = "${code}"`);
-        allReducers[code] = reducer;
+        if (allReducers[actionType])
+          console.warn(`redux-model-utils: multiple reducers are installed on model[${model.name}] for action type = "${actionType}"`);
+        allReducers[actionType] = reducer;
       }
       putHere[key] = actionMethod;
     }
@@ -109,4 +109,7 @@ export default function parseActionMap(model) {
       return trulyPrivateActions;
     }
   }
+
+  // eliminate the original action map
+  model.actionMap = null;
 }

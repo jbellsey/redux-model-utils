@@ -14,7 +14,7 @@ function externalizeSelectors(selectors, model) {
     namespace = null;
   }
 
-  return state => {
+  const mapStateToProps = state => {
 
     const props = Object.keys(selectors).reduce((map, sel) => {
 
@@ -25,21 +25,20 @@ function externalizeSelectors(selectors, model) {
       return map;
     }, {});
 
-    // add a selector for all this model's actions. this makes it less likely
-    // that you'll invoke an action directly on the model object. calling actions
-    // through props makes the component less coupled. it's also much easier to
-    // test, since stubbing a prop is trivial compared to stubbing the model as a whole.
-    //
-    props[`${modelName}_actions`] = model._rmu.actionsProp;
-
     return namespace ? {[namespace]: props} : props;
   };
+
+  // add a hint that this mapping function is namespaced. we need this when merging (below)
+  if (namespace) {
+    Object.defineProperty(mapStateToProps, '_rmu_namespace', {
+      enumerable: false,
+      value:      namespace
+    });
+  }
+  return mapStateToProps;
 }
 
 export function reactify(model) {
-
-  // this will become a prop on all connected components. see above.
-  model._rmu.actionsProp = () => model.actions;
 
   // the default map of selectors to props
   model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
@@ -57,6 +56,7 @@ export function reactify(model) {
 
 // merge the reactSelectors from multiple models for use in a single connected component.
 // duplicate keys will be last-in priority. accepts a list of either models or reactified maps.
+// for models that have a propsNamespace option, ALL of its propsMaps are namespaced.
 //
 export function mergeReactSelectors(...objects) {
 
@@ -70,7 +70,15 @@ export function mergeReactSelectors(...objects) {
       if (oneObject._rmu)
         oneObject = oneObject.reactSelectors;
 
-      Object.assign(props, oneObject(state));
+      // namespaced props-maps need a bit more care, to ensure that we merge properly
+      let propsForThisMap = oneObject(state),
+          ns = oneObject._rmu_namespace;
+      if (ns) {
+        props[ns] = props[ns] || {};
+        Object.assign(props[ns], propsForThisMap[ns]);
+      }
+      else
+        Object.assign(props, propsForThisMap);
     });
     return props;
   };

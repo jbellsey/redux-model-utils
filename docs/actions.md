@@ -1,16 +1,17 @@
 
 # Action maps
 
-We expose some basic factory functions (e.g., `makeActionCreator`). However,
+We expose some basic factory functions (e.g., `makeActionCreator`) that you
+might find useful. However,
 the power of this library is in the creation of action maps. They free you
-from creating custom action codes and monolithic reducers.
+from creating custom action types and monolithic reducers.
 
 (Most of this doc is a guide. There is a reference at the bottom of this file.)
 
 ### Action map example
 
-An action map allows you to fully describe an action in one package,
-which we call an *action definition*. Each key in the `actionMap` object
+An action map allows you to fully describe actions as self-contained packages,
+which we call *action definitions*. Each key in the `actionMap` object
 is a single action definition.
 
 Here again is the example from earlier:
@@ -40,55 +41,54 @@ let actionMap = {
 };
 ```
 
+### Invoking actions
+
 Here is how you call an action-creator from your view:
 
 ```javascript
 model.actions.removeTodo(4);
 ```
 
-The `actionMap` property of your model is not used by callers.
-The `modelBuilder` tool converts your action map into an `actions`
-object, as described below.
+Notice that internally, your `actionMap` object was transformed
+into an `actions` object, with callable functions.
 
-Your first question might be: "Yes, but where are the action codes?"
+Your first question might be: "Yes, but where are the action types?"
 They are created for you. There's no need to manually assign them.
 The `modelBuilder` tool can easily create unique action codes from
-the keys of your action map.
+the keys of your action map. (You can manually override this behavior,
+as described below.)
+
+Your second question might be: why must my view know so much about the model?
+The coupling is too tight! See [selectors.md](selectors.md) for how you can expose actions in a much
+more loosely-coupled manner. In short, you should not be calling actions directly
+this way; instead, expose actions as a prop for your components to invoke indirectly.
 
 ### Action map guidelines
 
 Each key -- or action definition -- in your action map is converted
-into an action-creator, and placed onto a public-facing `actions`
+into an action-creator, and placed onto an `actions`
 object in your model. In this example, the parser will unpack
-your action definitions and create two action-creators in the `actions` object:
+your action definitions and create two action-creators:
 `addTodo` and `removeTodo`.
 
-After parsing, the action map is not used.
+After running your model through the model builder, the original action map is not used.
 
-You must also provide a reducer function for responding to that action.
+Each action definition must provide a reducer function for responding to that action.
 The reducer will be called only when the given action is processed. So
 there's no need for switch statements. The reducer is private and atomic.
+A master reducer is created for you, and it delegates as needed.
 
 You can optionally indicate what parameters are passed to the action
 creator. The `params` property is an array of strings (parameter names).
-If no parameters are needed, you can omit this property.
-If only a single parameter is needed, you can use a string rather than an array of strings.
 
-Where is the master reducer for the model? It too is created for you, and will
-pass control to the appropriate reducer when an action is dispatched.
-
-And what of the initial state? In normal redux, you normally apply the initial
-state as a default argument to your master reducer. Alas, when you use an
-action map, the master reducer is generated for you. So you must instead
+And what of the initial state? You must
 provide a fully-specified `initialState` object on the model.
 
 ```javascript
 module.exports = reduxModelUtils.modelBuilder({
-
     name: 'todos',
     selectors,      // not shown in this example
 
-    // if you use an action map, you must provide these two objects:
     actionMap,
     initalState: {todos:[]}
 });
@@ -96,40 +96,48 @@ module.exports = reduxModelUtils.modelBuilder({
 
 ### Asynchronous actions in an action map
 
-To build an asynchronous action using an action map, omit the `reducer`,
+To build an asynchronous action using an action map, omit the `reducer` key,
 and instead include an `async` method
 in your action definition. This is a function which takes a `params` object,
 just as a normal reducer gets an `action` object as a parameter. The `async`
 function can return a promise for chaining.
 
-The action definition for an asynchronous action can include a `params`
-key, just as described above. It can be a string, or an array of strings,
-or you can omit it altogether if no parameters are needed.
+The action definition for an asynchronous action can also include a `params` key.
 
 ```javascript
 let actionMap = {
 
-    // example of an async action with no params: a one-second timed promise
+    wait: {
+      reducer: state => ({...state, {waiting: true}})
+    },
+    stopWaiting: {
+      reducer: state => ({...state, {waiting: false}})
+    }
+
+    // example of an async action with no params: a one-second timer.
+    // it returns a promise for chaining
     timer1000: {
         async: () => new Promise(resolve => setTimeout(resolve, 1000))
     },
 
     // a more typical async action
     save: {
-        params: 'recordID',
+        params: 'record',
         async(params) {
             // you can call synchronous actions inside an async action.
-            // here we make use of the "waitable" magic trigger.
             model.actions.wait();
 
-            // we return a promise, which callers can use for chaining
+            // we return a promise, which callers can use for chaining.
+            // we also invoke another synchronous action after the api returns.
             return api.save(params.recordID)
-                      .then(() => model.stopWaiting());
+                      .then(model.actions.stopWaiting);
         }
     }
 };
+
 // keep a reference to the constructed model, so we can call its actions above
-let model = module.exports = reduxModelUtils.modelBuilder( /* ... */ );
+let model = reduxModelUtils.modelBuilder( /* ... */ );
+export default model;
 
 // ... then later, in your view ...
 model.actions.save(44).then(closeForm);     // chain the returned promise
@@ -138,15 +146,8 @@ model.actions.timer1000().then(smile);
 
 ### Thunks vs. async actions
 
-Sometimes you will have an action which isn't strictly asynchronous,
-but needs to be written as a thunk instead of as an action-creator.
-Redux does not allow you to fire an action from within a reducer, so
-if you need to execute multiple actions from one method, you have to
-use an async action rather than a normal action-creator.
-
-If your async action isn't truly asynchronous, you're welcome to
-use the synonym `thunk` in your action map. This is purely for clarity;
-there is no functional difference from using the `async` option.
+You can use thunks in action maps. They behave identically to asynchronous
+actions. Simply use the `thunk` key instead of `async`.
 
 ```javascript
 let actionMap = {
@@ -178,37 +179,24 @@ Action codes are created for you automatically. You should not rely on
 them; think of them as an internal impelementation detail.
 
 However, you can override this behavior, and manually assign your own
-action code. This is useful for two main reasons:
+action type. This is useful for two main reasons:
 
 * If you have a hybrid Redux installation, where some actions are dispatched
   by a part of the app that is unaware of Redux Model Utils. By manually assigning
-  the code for an action, you can have your model listen for such actions.
-* If you want multiple reducers (in different models) to respond to the same
-  action. In this case, assign the same code to both handlers, and both reducers
+  the action's type, you can have your model listen for actions dispatched from
+  other parts of your app.
+* If you want multiple reducers in different models to respond to the same
+  action. In this case, assign the same type to both handlers, and both reducers
   will be invoked.
-  
-To manually assign an action code, use the `code` property on an action definition:
+
+To manually assign an action type, use the `actionType` property on an action definition:
 
 ```javascript
 let actionMap = {
-
     addNotification: {
-        code:   'MISC/NOTIFICATION/ADD',  // your own custom action code
-        params: 'newNotification',
-        reducer: (state, action) => {/* ... */}
-    },
-    storeDeviceData: {
-        params: 'data',
-        reducer: (state, params) => {/* ... */}
-    },
-
-    // thunk. not async.
-    storeAllData: {
-        params: ['userData', 'deviceData'],
-        thunk: params => {
-            model.actions.storeUserData(params.userData);
-            model.actions.storeDeviceData(params.deviceData);
-        }
+        actionType: 'MISC/NOTIFICATION/ADD',  // your own custom action type
+        params:     ['text', 'link'],
+        reducer:    (state, action) => {/* ... */}
     }
 };
 ```
@@ -219,48 +207,48 @@ There are good reasons to make actions that are private to your model.
 For example, consider an async action that wraps an API call to retrieve
 data from your server. After the API returns, you want to merge the data
 into your store. But the merging operation should be private, only available
-to the API action, and not to other components or views.
+within the API action, and not to other components or views.
 
 To make an action map with private actions is a two-step process.
-First, add a `private` key to any action definition that
+First, add a key `private: true` to any action definition that
 you want to keep private. Then, after your model is built, call
-`severPrivateActions` to ensure no other caller can use your action.
-This will return a new set of action-creators, and remove them
-from the model's main `actions` object.
+`severPrivateActions` to remove all private actions from the model's
+`actions` object. This ensures that no other caller can use your action.
+
+The `severPrivateActions` function will return a new set of action-creators:
 
 ```javascript
 let actionMap = {
+	    // this action is private. it's called after the (public) save
+	    // operation is complete
+	    _storeData: {
+	        private: true,  // flag it
+	        params: 'data',
+	        reducer: (state, action) => ({...state, {data: action.data}})
+	    },
+	
+	    // this is the public interface for saving data. when the
+	    // api returns, we call the private action, to merge the
+	    // new data into the store
+	    save: {
+	        params: 'recordID',
+	        async(params) {
+	            // note that the private action is not in the model's "actions" object
+	            return api.save(params.recordID).then(
+	                data => privateActions._storeData(data)
+	            )
+	        }
+	    }
+	},
+	
+	model = reduxModelUtils.modelBuilder( /* ... */ ),
+	
+	// here we remove all private actions from the model's actions object, and
+	// attach them to a local variable which is only accessible inside this module
+	privateActions = model.severPrivateActions();
 
-    // this action is private. it's called after the (public) save
-    // operation is complete
-    _storeData: {
-        private: true,  // flag it
-        params: 'data',
-        reducer: (state, action) => {
-            state = clone(state);
-            state.data = action.data;
-        }
-    },
+export default model;
 
-    // this is the public interface for saving data. when the
-    // api returns, we call the private action, to merge the
-    // new data into the store
-    save: {
-        params: 'recordID',
-        async(params) {
-            // note that the private action is not attached to the model
-            return api.save(params.recordID).then(
-                data => privateActions._storeData(data)
-            )
-        }
-    }
-},
-
-model = module.exports = reduxModelUtils.modelBuilder( /* ... */ ),
-
-// here we remove the private actions from the model, and attach
-// them to a local variable which is only accessible inside this module
-privateActions = model.severPrivateActions();
 
 // ... then later, in your view ...
 model.actions.save(44).then(closeForm);
@@ -269,24 +257,35 @@ model.actions.save(44).then(closeForm);
 model.actions._storeData({});
 ```
 
+In situations like this, you might also want to nest your actions, so that
+the relationship between the `save` action and its own private `_storeData`
+action is explicit.
+
 ### Nested actions
 
 You can organize your action map however you like. Actions can be nested, giving you the
-flexibility to group actions together.
+flexibility to group actions together. There is no technical limit to the depth of nesting.
+
+Note that nested actions are not automatically private. 
 
 ```javascript
 let actionMap = {
 
-  // watch the nesting:
+  // watch the nesting inside this action map:
   user: {
+    // this action will be available as model.actions.user.load()
     load: {
       params: 'id',
       async: ({id}) => apiCall(id).then(userData => {
-        privateActions.user.load._store(userData)
+        // the private action "_store" is nested inside privateActions
+        privateActions.user.load._store(userData);
       }),
 
-      // private action used only here to store the result of the query
+      // this private action is used only here to store the result of the query.
+      // it's nested inside "load" to clarify its relationship. and it's private
+      // to prevent meddling outsiders from using it.
       _store: {
+        private: true,
         params: 'userData',
         reducer: () => {}
       }
@@ -308,11 +307,11 @@ let actionMap = {
 /*
   this will create the following actions:
 
-      model.user.load(id)
+      model.actions.user.load(id)
       privateActions.user.load._store(userData)
-      model.user.save(userData)
+      model.action.user.save(userData)
 
-      model.prefs.save(prefs)
+      model.actions.prefs.save(prefs)
 */
 ```
 
@@ -321,7 +320,8 @@ let actionMap = {
 Each action definition can have one or more of the following keys:
 
 * `params`: an array of strings (parameter names) passed to the action (or thunk). If there is exactly
-  one parameter, you can use a string instead of an array.
+  one parameter, you can use a string instead of an array. If no parameters are required, you can
+  omit this key.
 
 * `reducer`: the atomic reducer for this action. Like any reducer in Redux, it is a pure function that takes
    two parameters: `state` and `action`.
@@ -332,7 +332,8 @@ Each action definition can have one or more of the following keys:
    the parameters defined in `params`. The return value of your thunk is passed back to the caller, to make it easy
    to chain promises.
 
-* `code`: optionally indicate the action code to be used for this action. See the discussion above.
+* `actionType`: optionally indicate the action type (string) to be used for this action. 
+   See the discussion above.
 
 * `private`: a boolean. If true, the action will be marked as private, and included in the object returned
    by `severPrivateActions`, as described above.
