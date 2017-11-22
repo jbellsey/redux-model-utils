@@ -1,4 +1,3 @@
-
 # Action maps
 
 We expose some basic factory functions (e.g., `makeActionCreator`) that you
@@ -8,13 +7,13 @@ from creating custom action types and monolithic reducers.
 
 (Most of this doc is a guide. There is a reference at the bottom of this file.)
 
-### Action map example
+## Action map example
 
 An action map allows you to fully describe actions as self-contained packages,
 which we call *action definitions*. Each key in the `actionMap` object
 is a single action definition.
 
-Here again is the example from earlier:
+Here is the example from earlier:
 
 ```javascript
 let actionMap = {
@@ -41,7 +40,14 @@ let actionMap = {
 };
 ```
 
-### Invoking actions
+After running your model through `modelBuilder`, two things happen:
+
+* The action map is parsed, and transformed into a corresponding set of functions
+  on `model.actions`. These functions are what you will use to dispatch actions.
+* A single master reducer is created, which will be installed into Redux. It
+  manages the logic that delegates to the atomic reducers.
+
+## Invoking actions
 
 Here is how you call an action-creator from your view:
 
@@ -63,7 +69,7 @@ The coupling is too tight! See [selectors.md](selectors.md) for how you can expo
 more loosely-coupled manner. In short, you should not be calling actions directly
 this way; instead, expose actions as a prop for your components to invoke indirectly.
 
-### Action map guidelines
+## Action map guidelines
 
 Each key -- or action definition -- in your action map is converted
 into an action-creator, and placed onto an `actions`
@@ -94,7 +100,7 @@ module.exports = reduxModelUtils.modelBuilder({
 });
 ```
 
-### Asynchronous actions in an action map
+## Asynchronous actions in an action map
 
 To build an asynchronous action using an action map, omit the `reducer` key,
 and instead include an `async` method
@@ -107,6 +113,7 @@ The action definition for an asynchronous action can also include a `params` key
 ```javascript
 let actionMap = {
 
+    // some standard synchronous actions
     wait: {
       reducer: state => ({...state, {waiting: true}})
     },
@@ -144,7 +151,7 @@ model.actions.save(44).then(closeForm);     // chain the returned promise
 model.actions.timer1000().then(smile);
 ```
 
-### Thunks vs. async actions
+## Thunks vs. async actions
 
 You can use thunks in action maps. They behave identically to asynchronous
 actions. Simply use the `thunk` key instead of `async`.
@@ -173,7 +180,7 @@ let actionMap = {
 };
 ```
 
-### About action codes
+## About action codes
 
 Action codes are created for you automatically. You should not rely on
 them; think of them as an internal impelementation detail.
@@ -201,7 +208,7 @@ let actionMap = {
 };
 ```
 
-### Private actions inside an action map
+## Private actions inside an action map
 
 There are good reasons to make actions that are private to your model.
 For example, consider an async action that wraps an API call to retrieve
@@ -261,7 +268,7 @@ In situations like this, you might also want to nest your actions, so that
 the relationship between the `save` action and its own private `_storeData`
 action is explicit.
 
-### Nested actions
+## Nested actions
 
 You can organize your action map however you like. Actions can be nested, giving you the
 flexibility to group actions together. There is no technical limit to the depth of nesting.

@@ -14,6 +14,8 @@ The view code will be shown next.
 
 # Model code
 
+##### geo-model.js
+
 ```javascript
 let   reduxModelUtils  = require('redux-model-utils'),
       model, privateActions;    // set below
@@ -80,7 +82,7 @@ const
 
 // run the model object through a custom tool ("modelBuilder"), which whips it into shape.
 // we cache a reference to the finished model, so we can call actions from inside this module
-module.exports = model = reduxModelUtils.modelBuilder({
+model = reduxModelUtils.modelBuilder({
 
     name: 'geo',
     selectors,
@@ -99,6 +101,8 @@ module.exports = model = reduxModelUtils.modelBuilder({
 // separate out the private actions, so they can only be used
 // inside this module
 privateActions = model.severPrivateActions();
+
+export default model;
 ```
 
 # View code
@@ -108,19 +112,20 @@ import `redux-model-utils`; just the relevant model.
 
 Here's a React component that uses the model. A vanilla version is shown next.
 
+##### geo-component.js
+
 ```javascript
 import React     from 'react';
 import {connect} from 'react-redux';
 import geoModel  from './models/geo';
 
-// you can use ES6 classes if you prefer
-let MyGeoComponent = React.createClass({
+class MyGeoComponent extends React.Component{
 
     componentWillMount() {
         // start the async query here. it could also be invoked
         // by a button handler, as in the vanilla example below
         geoModel.actions.getLocation();
-    },
+    }
 
     render() {
         // the props are created by the connect() call below.
@@ -136,15 +141,17 @@ let MyGeoComponent = React.createClass({
             </div>
         );
     }
-});
+};
 
 // "reactSelectors" is created for you, and ensures that your selectors are
 // all available as props. in this case, that means "location" and "waiting"
 export default connect(geoModel.reactSelectors)(MyGeoComponent);
 ```
 
-A similar view in vanilla. In this case, we don't even have to import
+A similar view in vanilla JavaScript. In this case, we don't even have to import
 any Redux code.
+
+##### geo-view.js
 
 ```javascript
 let geoModel = require('./models/geo'),
@@ -183,10 +190,11 @@ to install, but you may not omit anything in the setup example here.
 The one exception: if your app does not use async actions, you can omit the
 installation and setup of `redux-thunk`.
 
+##### store-setup.js
 ```javascript
-import redux           from 'redux';
-import thunk           from 'redux-thunk';
-import reduxModelUtils from 'redux-model-utils';
+import {combineReducers, applyMiddleware} from 'redux';
+import thunk from 'redux-thunk';
+import {buildReducerMap, setStore, getStore} from 'redux-model-utils';
 
     // THIS IS NEW: build an array with all of your models
 let models = [
@@ -196,18 +204,34 @@ let models = [
     ],
 
     // standard. add other middlewares here
-    createStoreWithMiddleware = redux.applyMiddleware(thunk)(redux.createStore),
+    createStoreWithMiddleware = applyMiddleware(thunk)(redux.createStore),
 
     // THIS IS NEW: prepare an object for combineReducers
-    allReducers = reduxModelUtils.buildReducerMap(models),
+    allReducers = buildReducerMap(models),
 
     // THIS IS REQUIRED (but you might already be doing it):
     // unify all models into a single reducer
-    masterReducer = redux.combineReducers(allReducers),
+    masterReducer = combineReducers(allReducers),
 
     masterStore = createStoreWithMiddleware(masterReducer);
 
 // THIS IS NEW:
-reduxModelUtils.setStore(masterStore);
-module.exports = masterStore;
+setStore(masterStore);
+export default masterStore;
+```
+
+# Deferred model loading
+
+If you have a model that's lazy-loaded, you can easily install it and its reducer:
+
+```js
+// add the following code to "store-setup.js" above
+//
+export function injectModel(model) {
+  models.push(model);
+
+  let allReducers   = buildReducerMap(models),
+      masterReducer = combineReducers(allReducers);
+  getStore().replaceReducer(masterReducer);
+}
 ```

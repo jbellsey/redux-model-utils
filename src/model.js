@@ -12,10 +12,8 @@ function validateAndCleanup(model) {
   else
     allModelNames.push(model.name);
 
-  if (model.reducer) {
-    console.log('MASTER REDUCER:', model)
-    console.trace('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
-  }
+  if (model.reducer)
+    console.error('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
 
   if (!(model.actionMap || model.initialState))
     console.error('redux-model-utils: You must provide actionMap and initialState objects.');

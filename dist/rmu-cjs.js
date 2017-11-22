@@ -368,7 +368,7 @@ function externalizeSelectors(selectors, model) {
     namespace = null;
   }
 
-  return function (state) {
+  var mapStateToProps = function mapStateToProps(state) {
 
     var props = Object.keys(selectors).reduce(function (map, sel) {
 
@@ -379,23 +379,20 @@ function externalizeSelectors(selectors, model) {
       return map;
     }, {});
 
-    // add a selector for all this model's actions. this makes it less likely
-    // that you'll invoke an action directly on the model object. calling actions
-    // through props makes the component less coupled. it's also much easier to
-    // test, since stubbing a prop is trivial compared to stubbing the model as a whole.
-    //
-    props[model._rmu.rawName + '_actions'] = model._rmu.actionsProp;
-
     return namespace ? defineProperty({}, namespace, props) : props;
   };
+
+  // add a hint that this mapping function is namespaced. we need this when merging (below)
+  if (namespace) {
+    Object.defineProperty(mapStateToProps, '_rmu_namespace', {
+      enumerable: false,
+      value: namespace
+    });
+  }
+  return mapStateToProps;
 }
 
 function reactify(model) {
-
-  // this will become a prop on all connected components. see above.
-  model._rmu.actionsProp = function () {
-    return model.actions;
-  };
 
   // the default map of selectors to props
   model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
@@ -413,6 +410,7 @@ function reactify(model) {
 
 // merge the reactSelectors from multiple models for use in a single connected component.
 // duplicate keys will be last-in priority. accepts a list of either models or reactified maps.
+// for models that have a propsNamespace option, ALL of its propsMaps are namespaced.
 //
 function mergeReactSelectors() {
   for (var _len = arguments.length, objects = Array(_len), _key = 0; _key < _len; _key++) {
@@ -428,7 +426,13 @@ function mergeReactSelectors() {
       // otherwise, it's a propsMap that has already been reactified
       if (oneObject._rmu) oneObject = oneObject.reactSelectors;
 
-      Object.assign(props, oneObject(state));
+      // namespaced props-maps need a bit more care, to ensure that we merge properly
+      var propsForThisMap = oneObject(state),
+          ns = oneObject._rmu_namespace;
+      if (ns) {
+        props[ns] = props[ns] || {};
+        Object.assign(props[ns], propsForThisMap[ns]);
+      } else Object.assign(props, propsForThisMap);
     });
     return props;
   };
@@ -478,10 +482,10 @@ function mapActions(actionMap, namespace, mapInfo) {
         async = actionDetails.async,
         thunk = actionDetails.thunk,
         reducer = actionDetails.reducer,
-        _actionDetails$code = actionDetails.code,
-        code = _actionDetails$code === undefined ? namespace + '/' + key : _actionDetails$code,
+        _actionDetails$action = actionDetails.actionType,
+        actionType = _actionDetails$action === undefined ? namespace + '/' + key : _actionDetails$action,
         isPrivateAction = actionDetails.private,
-        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'code', 'private']),
+        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'actionType', 'private']),
         putHere = void 0,
         actionMethod = void 0;
 
@@ -497,11 +501,11 @@ function mapActions(actionMap, namespace, mapInfo) {
       // add an action-creator. async is handled differently. (thunk is a synonym)
       var asyncHandler = async || thunk;
       if (asyncHandler) actionMethod = makeAsyncAction.apply(undefined, [asyncHandler].concat(toConsumableArray(params)));else {
-        actionMethod = makeActionCreator.apply(undefined, [code].concat(toConsumableArray(params)));
+        actionMethod = makeActionCreator.apply(undefined, [actionType].concat(toConsumableArray(params)));
 
         // install the reducer. private reducers go here as well
-        if (allReducers[code]) console.warn('redux-model-utils: multiple reducers are installed on model[' + model.name + '] for action code = "' + code + '"');
-        allReducers[code] = reducer;
+        if (allReducers[actionType]) console.warn('redux-model-utils: multiple reducers are installed on model[' + model.name + '] for action type = "' + actionType + '"');
+        allReducers[actionType] = reducer;
       }
       putHere[key] = actionMethod;
     }
@@ -563,6 +567,9 @@ function parseActionMap(model) {
       return trulyPrivateActions;
     };
   }
+
+  // eliminate the original action map
+  model.actionMap = null;
 }
 
 /**
@@ -644,7 +651,10 @@ function modelBuilder(model) {
   validateAndCleanup(model);
 
   // the presence of this key is an indicator. it also contains our private stuff.
-  model._rmu = {};
+  Object.defineProperty(model, '_rmu', {
+    enumerable: false,
+    value: {}
+  });
 
   // pass through the subscribe method, so views don't have to import this library
   //

@@ -3,6 +3,8 @@
 npm install --save redux-model-utils
 ```
 
+*File size*: 3k (min/gzip).
+
 # Redux model utilities
 
 You have in your hands a set of model-building utilities for Redux apps. Like Redux itself, this library
@@ -15,19 +17,24 @@ Before jumping into the [full documentation](docs),
 let's take a look at what your code will look like when
 you use this library.
 
-# Model-building patterns
+## Model-building patterns
 
 This library takes Redux and wraps it in a thin, almost object-oriented facade.
-Each feature in your app can be represented by a single model, with its own private
-data and public methods.
+Each feature in your app can be represented by a single object (or "model"). Each
+model has its own private methods (i.e., action creators), and its own private
+data (i.e., its slice of the store). Views interact with the store
+by invoking these methods, and retrieve data either by using React-Redux's `connect`
+utility, or by subscribing to a slice of the store.
 
-Behind the scenes, the methods dispatch actions and use reducers to reconcile the model data. 
-But from a user's perspective, this is an internal implementation detail. As a model user,
-you will never use the `dispatch` method, nor `mapStateToProps`, nor will you need
-to create action codes.
+Behind the scenes, the methods dispatch actions and use reducers to reconcile the model data. (It's all Redux, in the end.)
+But from a developer's perspective, this is an internal implementation detail. To use
+one of these models, you will never use the `dispatch` method, nor `mapStateToProps`,
+nor will you need to create action codes.
 
-Consider a simple user model. The following is pseudo-code, just to illustrate where we're going:
+Consider a simple model to track user data. The following is pseudo-code, just to 
+illustrate where we're going:
 
+##### pseudocode-only.js
 ```js
 // private data:
 const userID = 0,
@@ -42,11 +49,13 @@ export function saveUser() {}
 export function updateLanguagePref(newLang) {}
 
 // public accessors
-export const language = () => longLanguageName[this.lang];
-export const shirtSize = () => longSizeName[this.lang];
+export const language = () => longLanguageName[preferences.lang];
+export const shirtSize = () => longSizeName[preferences.shirtSize];
 ```
 
-Here's the skeletal representation using Redux Model Utilities. It's incomplete:
+Here's the skeletal representation using Redux Model Utilities:
+
+##### user-model.js
 ```js
 const model = modelBuilder({
 
@@ -61,27 +70,32 @@ const model = modelBuilder({
     }
   },
 
-  // the model's "methods". these are converted into callable functions on "actions".
+  // the model's "methods". these are transformed into callable functions on "actions".
   // for example: model.actions.loadUser(88). the actions are typically passed to
   // connected components as a prop (see below)
   actionMap: {
+    // this describes a function on model.actions.loadUser()
     loadUser: {
       params: 'id',
-      reducer: (state, {id}) => state   // incomplete
+      
+      // this reducer is atomic; it's only invoked when this action is dispatched
+      reducer: (state, {id}) => ({...state, {userID: id}})
     },
+    // and a function on model.actions.saveUser(), etc
     saveUser: {/* ... */},
     updateLanguagePref: {/* ... */}
   },
 
-  // the following "selectors" are automatically passed as props to your connected components.
+  // the following "selectors" are passed as props to your connected components.
   // selectors can expose data in raw form (directly from state) or manipulated.
   selectors: {
+    // your connected component gets "this.props.language"
     language:  state => state.preferences.lang,
     shirtSize: state => state.preferences.shirtSize,
 
     // the following prop gives connected components direct access to the model's methods
-    // e.g., "this.props.actions.loadUser(0)"
-    actions:  () => model.actions
+    // e.g., "this.props.userActions.loadUser(0)"
+    userActions:  () => model.actions
   }
 });
 export default model;
@@ -89,15 +103,15 @@ export default model;
 
 ## Why?
 
-This not only removes most of the Redux boilerplate. But it also gives you:
+This not only removes most of the Redux boilerplate, but it also gives you:
 
 * **Atomic reducers**. Each action has a single-purpose reducer. There are no
-  `switch` statements. (You can share action codes if you like, so you can have multiple
+  `switch` statements. (You can share action types if you like, so you can have multiple
   reducers handle the same action.)
 
 * **Encapsulation**. The model has everything it needs to manage a single feature in your app.
   There are no separate `mapStateToProps` calls in container components, no separate action code
-  files, no lost reducers.
+  files.
 
 There are also tools for async actions, private actions, shared actions, and more. Read the
 [full docs on actions](docs/actions.md).
@@ -109,25 +123,16 @@ No need to write `mapStateToProps` or `mapDispatchToProps`.
 It's all done for you when you connect a model to a component.
 
 ```javascript
-// selectors map to props when you connect a model to a component.
+// here, we create a connected component around the user model above
 //
-let selectors = {
-    language:  state => state.preferences.lang,
-    shirtSize: state => state.preferences.shirtSize,
+import userModel from './models/user-model.js';
 
-    // we typically export actions as a selector as well. you can rename
-    // it to "userActions" if you like, to avoid naming conflicts
-    actions:  () => model.actions
-};
-
-// ... then later, in your connected component ...
-//
 class UserSettingsPage extends Component {
     render() {
-        let {language, shirtSize, actions} = this.props;
+        let {language, shirtSize, userActions} = this.props;
         // ...
 
-        return <button onClick={() => actions.saveUser()}>Save</button>
+        return <button onClick={() => userActions.saveUser()}>Save</button>
     }
 }
 export default connect(userModel.reactSelectors)(UserSettingsPage);
@@ -151,7 +156,8 @@ let initialState = {
     selectors = {
         token:     state => state.token,
         pollTimer: state => state.pollTimer
-    };
+    },
+    uiModel = modelBuilder({/*... */});
 
 // ... then later, in your view ...
 let token = uiModel.data.token;
@@ -173,7 +179,7 @@ you when a property changes. Use this for cross-cutting concerns. (In non-React 
 will be your main rendering trigger.)
 
 ```javascript
-let unsubscribe = uiModel.subscribe(uiModel.selectors.fontSize, (newFontSize, oldFontSize) => {
+let unsubscribe = uiModel.subscribe(uiModel.selectors.shirtSize, (newShirtSize, oldShirtSize) => {
     // callback is called once at initialization time, and then only
     // when the property changes
     console.log(`Font size changed from ${oldFontSize} to ${newFontSize}`);
