@@ -9,9 +9,7 @@
 
 # API reference
 
-* [Config & setup tools](api-config.md)
-* [Model-building tools](api-model.md)
-* [View-related tools](api-view.md)
+* [View-related tools](api-reference.md)
 
 # Using this repo
 

@@ -1,7 +1,7 @@
 import clone from 'clone';
 import mockStore, {mockModelFreeStore} from './support/mock-store';
 import {makeActionCreator, makeAsyncAction} from '../src/actions';
-import {modelBuilder} from '../src/model';
+import {modelBuilder, refreshForTesting} from '../src/model';
 import {tick} from './support/utils';
 
 describe('ACTIONS module:', () => {
@@ -195,6 +195,15 @@ describe('NESTED actions', () => {
           timer100_thunk: {
             thunk: () => tick(10)
           },
+          size: {
+            params:  'size',
+            reducer: (state, {size}) => ({...state, prefs: {size}}),
+
+            // a nested action, one level deep
+            smallish: {
+              reducer: (state, {size}) => ({...state, prefs: {size: 'smallish'}}),
+            }
+          },
           color: {
             reddish: {
               actionType: 'reddify',  // a manually assigned actionType. not shared yet.
@@ -204,8 +213,22 @@ describe('NESTED actions', () => {
               reducer: state => ({...state, prefs: {color: 'bluish'}})
             },
             greenish: {
+              // a private action with a public sub-action
               private: true,
-              reducer: state => ({...state, prefs: {color: 'greenish'}})
+              reducer: state => ({...state, prefs: {color: 'greenish'}}),
+
+              veryGreen: {
+                reducer: state => ({...state, prefs: {color: 'veryGreen'}}),
+              }
+            },
+            yellowish: {
+              // a public action with a private sub-action
+              reducer: state => ({...state, prefs: {color: 'yellowish'}}),
+
+              veryYellow: {
+                private: true,
+                reducer: state => ({...state, prefs: {color: 'veryYellow'}}),
+              }
             }
           },
           save: {
@@ -259,6 +282,12 @@ describe('NESTED actions', () => {
     model.actions.makeAnyColor('charcoal');
     expect(store.getModelState().prefs.color).toBe('charcoal');
 
+    // a top level action with a single nested sub
+    model.actions.size('15-34');
+    expect(store.getModelState().prefs.size).toBe('15-34');
+    model.actions.size.smallish();
+    expect(store.getModelState().prefs.size).toBe('smallish');
+
     // a few public nested actions
     model.actions.color.reddish();
     expect(store.getModelState().prefs.color).toBe('reddish');
@@ -266,9 +295,19 @@ describe('NESTED actions', () => {
     expect(store.getModelState().prefs.color).toBe('bluish');
 
     // greenish is a private nested action
-    expect(model.actions.color.greenish).toBe(undefined);
+    expect(typeof model.actions.color.greenish).not.toBe('function');
     privateActions.color.greenish();
     expect(store.getModelState().prefs.color).toBe('greenish');
+
+    // veryGreen is a public action nested inside a private one
+    expect(model.actions.color.greenish.veryGreen).not.toBe(undefined);
+    model.actions.color.greenish.veryGreen();
+    expect(store.getModelState().prefs.color).toBe('veryGreen');
+
+    // veryYellow is a private action nested inside a public one
+    expect(typeof privateActions.color.yellowish.veryYellow).toBe('function');
+    privateActions.color.yellowish.veryYellow();
+    expect(store.getModelState().prefs.color).toBe('veryYellow');
 
     // async nested with a return value
     model.actions.save.user()
@@ -412,6 +451,62 @@ describe('SHARED ACTION TYPES & multiple models:', () => {
       model2.actions.size.sharedXL();
       expect(model1.data.size).toBe('XL');
       expect(model2.data.size).toBe('XL');
+    });
+
+  });
+});
+
+describe('model name that matches actions & selectors:', () => {
+
+  let modelSeed = {
+        name:         'todos',
+        initialState: {todos: [44,33], listName: 'todos'},
+        selectors:    {todos: 'todos', listName: 'listName'},
+        actionMap:    {
+          todos: {
+            params: 'todos',
+            reducer: (state, {todos}) => ({...state, todos}),
+
+            // this sub-action actually changes the list name.
+            // it's intentionally named badly, to try to conflict
+            // with the other "todos"
+            todos: {
+              params: 'todos',
+              reducer: (state, {todos}) => ({...state, listName: todos}),
+            }
+          }
+        }
+      };
+
+  describe('allows name duplication at different levels', () => {
+
+    let store, model;
+
+    beforeEach(() => {
+      refreshForTesting();
+      model = modelBuilder(clone(modelSeed));
+      store = mockStore(model);
+    });
+
+    it('initializes properly', () => {
+      expect(model.data.todos[0]).toBe(44);
+      expect(model.data.todos[1]).toBe(33);
+    });
+
+    it('executes an action', () => {
+      model.actions.todos([99,77]);
+      expect(model.data.todos[0]).toBe(99);
+      expect(model.data.todos[1]).toBe(77);
+
+      // and peeking directly into the store
+      expect(store.getModelState(model).todos[0]).toBe(99);
+      expect(store.getModelState(model).todos[1]).toBe(77);
+    });
+
+    it('executes a sub-action', () => {
+      model.actions.todos.todos('swell');
+      expect(model.data.listName).toBe('swell');
+      expect(store.getModelState(model).listName).toBe('swell');
     });
 
   });

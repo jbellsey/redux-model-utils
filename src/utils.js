@@ -39,3 +39,7 @@ export function isFunction(x) {
 export function isObject(x) {
   return x !== null && typeof x === 'object';
 }
+
+export function objectHasKeys(x) {
+  return isObject(x) && Object.keys(x).length > 0;
+}

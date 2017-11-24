@@ -1,5 +1,5 @@
 import {makeActionCreator, makeAsyncAction} from './actions';
-import {isObject, isFunction} from './utils';
+import {isObject, objectHasKeys, isFunction} from './utils';
 
 
 function isAction(obj) {
@@ -7,9 +7,13 @@ function isAction(obj) {
     && (isFunction(obj.reducer) || isFunction(obj.async) || isFunction(obj.thunk));
 }
 
-function mapActions(actionMap, namespace, mapInfo) {
+// this function is not pure; it will modify "allReducers" in place
+//
+function mapActions(actionMap, namespace, model, allReducers) {
 
-  let {actionTree, privateTree, allReducers, model} = mapInfo;
+  let anyPrivate = false,
+      publicTree,
+      privateTree;
 
   Object.keys(actionMap).forEach(key => {
 
@@ -23,23 +27,28 @@ function mapActions(actionMap, namespace, mapInfo) {
           // everything else becomes a sub-action
           ...subActions
         } = actionDetails,
-        putHere, actionMethod;
+        putHere,
+        actionMethod;
 
     // first deal with the action at the top level of this object. it may or may not exist.
     if (isAction(actionDetails)) {
       if (isPrivateAction) {
+        privateTree = privateTree || {};
         putHere = privateTree;
-        mapInfo.anyPrivate = true;
+        anyPrivate = true;
       }
-      else
-        putHere = actionTree;
+      else {
+        publicTree = publicTree || {};
+        putHere = publicTree;
+      }
 
+      // coerce params into an array
       if (typeof params === 'string')
         params = [params];
       else if (!params)
         params = [];
 
-      // add an action-creator. async is handled differently. (thunk is a synonym)
+      // add an action-creator. async/thunk is handled differently
       const asyncHandler = async || thunk;
       if (asyncHandler)
         actionMethod = makeAsyncAction(asyncHandler, ...params);
@@ -58,41 +67,52 @@ function mapActions(actionMap, namespace, mapInfo) {
     // may not exist. so sub-actions may be nested inside a new object, or they may
     // be nested as new properties attached directly to the function at the root.
     //
-    if (Object.keys(subActions).length > 0) {
-      // set up mapInfo at the new nest level
-      mapInfo.actionTree  = actionTree[key]  = actionMethod || {};
-      mapInfo.privateTree = privateTree[key] = actionMethod || {};  // (yes, this needs its own empty object)
-
+    if (objectHasKeys(subActions)) {
       // scan all of the sub-actions
-      mapActions(actionDetails, key, mapInfo);
+      let {
+          publicTree:  subPublicTree,
+          privateTree: subPrivateTree,
+          anyPrivate:  subAnyPrivate
+        }
+        = mapActions(subActions, actionType, model, allReducers);
 
-      // put mapInfo back the way it was
-      mapInfo.actionTree  = actionTree;
-      mapInfo.privateTree = privateTree;
+      // merge in the results
+      if (subPublicTree) {
+        publicTree = publicTree || {};
+        publicTree[key] = publicTree[key] || {};
+        Object.assign(publicTree[key], subPublicTree);
+      }
+
+      if (subPrivateTree) {
+        privateTree = privateTree || {};
+        privateTree[key] = privateTree[key] || {};
+        Object.assign(privateTree[key], subPrivateTree);
+      }
+
+      if (subAnyPrivate)
+        anyPrivate = true;
     }
   });
+
+  return {
+    publicTree,
+    privateTree,
+    anyPrivate
+  };
 }
 
 export default function parseActionMap(model) {
 
-  // this blob will be used by mapActions to track status. consider it
-  // a giant return value
-  //
-  let mapInfo = {
-    model,
-    actionTree:  {},
-    privateTree: {},
-    allReducers: {},
-    anyPrivate:  false
-  };
+  let allReducers = {},
+      {publicTree, privateTree, anyPrivate}
+        = mapActions(model.actionMap, model.name, model, allReducers);
 
-  mapActions(model.actionMap, model.name, mapInfo);
+  model.actions = publicTree;
+  model._rmu.privateActions = privateTree;
 
-  // the output of the actionMap: public actions, private actions, and a single master reducer
-  model.actions = mapInfo.actionTree;
-  model._rmu.privateActions = mapInfo.privateTree;
+  // the master reducer
   model.reducer = (state = model.initialState, action = {}) => {
-    const reducer = mapInfo.allReducers[action.type];
+    const reducer = allReducers[action.type];
     if (reducer)
       state = reducer(state, action);
     return state;
@@ -102,7 +122,7 @@ export default function parseActionMap(model) {
   // it retrieves the list of private actions, and severs
   // that list from the public model.
   //
-  if (mapInfo.anyPrivate) {
+  if (anyPrivate) {
     model.severPrivateActions = () => {
       const trulyPrivateActions = model._rmu.privateActions;
       model._rmu.privateActions = model.severPrivateActions = null;

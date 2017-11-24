@@ -180,9 +180,40 @@ let actionMap = {
 };
 ```
 
-## About action codes
+## Async/await
 
-Action codes are created for you automatically. You should not rely on
+Yes, not a problem. It may be confusing that the language keyword ("async") is the same
+as the library keyword ("async"). Feelf ree to use the library keyword "thunk" instead,
+as it's internally identical.
+
+
+```javascript
+let actionMap = {
+
+    save: {
+        params: ['id', 'data'],
+        async: async ({id, data}) => {
+          const apiResult = await saveDataToApi(id, data);
+          return apiResult;
+        }
+    },
+    load: {
+        async async(params) {/* ... */}
+    },
+    
+    // "async async" got you down? use "thunk":
+    update: {
+       thunk: async (params) => {/* ... */}
+    },
+    update: {
+       async thunk(params) {/* ... */}
+    }
+};
+```
+
+## About action types
+
+Action types are created for you automatically. You should not rely on
 them; think of them as an internal impelementation detail.
 
 However, you can override this behavior, and manually assign your own
@@ -191,7 +222,7 @@ action type. This is useful for two main reasons:
 * If you have a hybrid Redux installation, where some actions are dispatched
   by a part of the app that is unaware of Redux Model Utils. By manually assigning
   the action's type, you can have your model listen for actions dispatched from
-  other parts of your app.
+  other parts of your app. (And, of course, vice versa.)
 * If you want multiple reducers in different models to respond to the same
   action. In this case, assign the same type to both handlers, and both reducers
   will be invoked.

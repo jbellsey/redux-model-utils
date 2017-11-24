@@ -5,6 +5,10 @@ import subscribe from './subscribe';
 
 let allModelNames = [];
 
+export function refreshForTesting() {
+  allModelNames = [];
+}
+
 function validateAndCleanup(model) {
 
   if (allModelNames.indexOf(model.name) !== -1)

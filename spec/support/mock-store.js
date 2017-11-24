@@ -3,7 +3,10 @@ import {setStore} from '../../src/store';
 import thunk from 'redux-thunk';
 
 //----------
-// store helper. designed specifically to support one or more models built with redux-model-utils
+// store helper. designed specifically to support one or more models built with redux-model-utils.
+// in addition to the normal store API (such as getState), this adds one important tool:
+//   getModelState(): returns the relevant slice of the store for a single model
+// it also installs a spy onto store.dispatch, so you can track actions.
 //
 export default function mockStore(models) {
   if (!Array.isArray(models))
