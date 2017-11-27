@@ -625,7 +625,6 @@ function parseActionMap(model) {
   //
   if (anyPrivate) {
     model.severPrivateActions = function () {
-      // const trulyPrivateActions = model._rmu.privateActions;
       model._rmu.privateActions = model.severPrivateActions = null;
       return privateTree;
     };
