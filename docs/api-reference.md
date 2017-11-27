@@ -57,12 +57,12 @@ let rawModel = {
   name,       // string
   selectors,  // object map; see below
 
-  actionMap,  // a bundle that unpacks to your action creators and atomic reducers
+  actionMap,  // an object that transforms into your action creators and atomic reducers
   initialState,
 
   //--- optional properties
 
-  options     // object; options for model creation
+  options     // object
 };
 
 // before exporting your model, run it through this transformer. see below.
@@ -73,24 +73,20 @@ export default model;
 
 You must provide a string `name` for your model, which must be unique across other models.
 
-You must provide a list of [selectors](selectors.md). These are strings or functions that are used
-to expose specific properties in your model's store.
-One selector is needed for each observable property. You may also choose
-to define selectors for properties that are not externally observable, but are only
-needed inside the reducer. That's up to you.
+You must provide a list of [selectors](selectors.md). These are strings or functions that are used to expose specific properties in your model's store. They become props on
+your connected components. One selector is needed for each observable property.
 
 You must provide an action map, which is a bundle
 that describes your action creators. Each action creator is packaged with an
 atomic reducer function for handling that one action.
-
-Read the full documentation on how to build actions and action maps
+Read the full documentation on how to build action maps
 [here](actions.md).
 
 
 ### modelBuilder(model)
 
-You must run your model through this utility before exporting it. It has no
-options.
+You must run your model through this utility before exporting it. The function
+takes a single parameter, described above.
 
 ```javascript
 export default modelBuilder({
@@ -103,13 +99,14 @@ export default modelBuilder({
 
 ### makeActionCreator(type, ...argNames)
 
-You've probably already done this if you've used Redux before.
+**Note**: If you're using action maps, you won't need this tool (or the next one).
+They are provided as a convenience for hybrid installations.
+
+You've probably already used a similar tool if you've used Redux before.
 See [the docs](https://redux.js.org/docs/basics/Actions.html).
 This version is not any different. Note that actions invoked this way are dispatched for you.
 If you need a different way to dispatch, or if you need action objects without a built-in
 dispatch, just don't use this tool.
-
-And if you're using an action map, you won't need this tool (or the next one).
 
 ```javascript
 let actions = {
@@ -127,46 +124,9 @@ The callback's signature is `function(args) {}`, where `args` is an object map o
 arguments you indicate in `argNames`. The callback's return value is passed back
 to the caller. so you can chain promises.
 
-Here's a common pattern for running an AJAX query in a vanilla (non-React) app:
-
-```javascript
-// these private actions are used inside async actions. they are not exposed.
-// also, this example doesn't include the reducer code for them.
-//
-let privateActions = {
-
-  // this action might invalidate the cache
-  startQuery: makeActionCreator('QU_START'),
-
-  // this will store the results in your model when the query is finished
-  endQuery:   makeActionCreator('QU_END', 'results')
-};
-let actions = {
-  // make an async action that takes one argument ('username').
-  query: makeAsyncAction(args => {
-
-    // run a synchronous action, perhaps to set a "loading" flag
-    privateActions.startQuery();
-
-    // start the async operation. we return a promise, so the user can chain
-    return fetch(`http://myapi.com/u/${args.username}`)
-      .then(response => {
-
-        // query is done. run another synchronous action to store the data
-        privateActions.endQuery(response);
-      });
-    }, 'username')
-};
-// ... later ...
-model.actions.query('harry').then(showProfilePage);
-```
-
 ### model.severPrivateActions()
 
-If you use an action map, you can make some actions
-private, as described and documented on the
-[actions page](actions.md). Call this method to
-remove the private actions from your model's public
+Call this method to remove the private actions from your model's public
 interface.
 
 Note that this method is added to your model by the `modelBuilder`
@@ -180,7 +140,7 @@ let actionMap = {
       secretAction: {
         private: true,
         params: 'data',
-        reducer: (state, action) => ({...state, {data: action.data}})
+        reducer: (state, {data}) => ({...state, {data}})
       },
 
       publicAction: {
@@ -193,9 +153,10 @@ let actionMap = {
 
     model = modelBuilder( /* ... */ ),
 
-    // call "sever"; this can only be done once. it removes the private
-    // action from the main "model.actions" object, and returns a new
+    // call "severPrivateActions"; this can only be done once. it removes the 
+    // private actions from the main "model.actions" object, and returns a new
     // object map with all of the private actions in the model
+    //
     privateActions = model.severPrivateActions();
 
 export default model;
@@ -211,20 +172,21 @@ model.actions.secretAction({a:2});
 
 ## View-related tools
 
-### mergeReactSelectors(...models)
+### mergePropsMaps(...models)
 
 If your component needs props from more than one model, you can combine them with
-`mergeReactSelectors`.
+`mergePropsMaps `.
 
 ```javascript
 import todoModel from './models/todo.js';
-import uiModel   from './models/ui.js';
+import uiModel from './models/ui.js';
+import {mergePropsMaps} from 'redux-model-utils';
 
 class TodoList extends Component { /* ... */ }
 
 export default connect(
     // pass in as many models as you need
-    mergeReactSelectors(todoModel, uiModel)
+    mergePropsMaps(todoModel, uiModel)
 )(TodoList);
 ```
 
@@ -239,14 +201,15 @@ win any conflicts with `todoModel`.
 
 There are several other techniques for working with React and props:
 
-* You can namespace props. This is another way to avoid collisions, and
+* You can namespace props. This is a good way to avoid collisions, and
 to have the props sourced more explicitly. (So you can get 
 `this.props.todoProps.todos` instead of `this.props.todos`.)
 * You can also create multiple props-maps. Think of this as having multiple
 `mapStateToProps` functions, which allows you to set up a different set of
 props for each view.
 
-More details on using this library with React can be found [here](react.md).
+More details on these tools, and using this library with React,
+can be found [here](react.md).
 
 ### model.subscribe(selector, cb, opts)
 
@@ -288,6 +251,7 @@ let unsub = todoModel.subscribe(todoModel.selectors.todos, todoList => {
     // do something with the new data
     console.log('todos changed', todoList);
 });
+
 // and later...
 unsub();
 ```

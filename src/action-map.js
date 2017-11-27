@@ -1,11 +1,6 @@
 import {makeActionCreator, makeAsyncActionForModel} from './actions';
-import {isObject, objectHasKeys, isFunction} from './utils';
+import {objectHasKeys, isFunction} from './utils';
 
-
-function isAction(obj) {
-  return isObject(obj)
-    && (isFunction(obj.reducer) || isFunction(obj.async) || isFunction(obj.thunk));
-}
 
 // this function is not pure; it will modify "allReducers" in place
 //
@@ -17,8 +12,7 @@ function mapActions(actionMap, namespace, model, allReducers) {
 
   Object.keys(actionMap).forEach(key => {
 
-    let actionDetails = actionMap[key],
-        {
+    let {
           // these are the reserved words that indicate an action
           params, async, thunk, reducer,
           actionType = `${namespace}/${key}`,
@@ -26,20 +20,18 @@ function mapActions(actionMap, namespace, model, allReducers) {
 
           // everything else becomes a sub-action
           ...subActions
-        } = actionDetails,
+        } = actionMap[key],
         putHere,
         actionMethod;
 
     // first deal with the action at the top level of this object. it may or may not exist.
-    if (isAction(actionDetails)) {
+    if (isFunction(reducer) || isFunction(async) || isFunction(thunk)) {
       if (isPrivateAction) {
-        privateTree = privateTree || {};
-        putHere = privateTree;
+        putHere = privateTree = privateTree || {};
         anyPrivate = true;
       }
       else {
-        publicTree = publicTree || {};
-        putHere = publicTree;
+        putHere = publicTree = publicTree || {};
       }
 
       // coerce params into an array
@@ -118,15 +110,13 @@ export default function parseActionMap(model) {
     return state;
   };
 
-  // this can be used one time only.
-  // it retrieves the list of private actions, and severs
-  // that list from the public model.
+  // this can be used one time only. it retrieves the list of
+  // private actions, and severs that list from the public model.
   //
   if (anyPrivate) {
     model.severPrivateActions = () => {
-      const trulyPrivateActions = model._rmu.privateActions;
       model._rmu.privateActions = model.severPrivateActions = null;
-      return trulyPrivateActions;
+      return privateTree;
     }
   }
 

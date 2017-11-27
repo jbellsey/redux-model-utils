@@ -6,7 +6,8 @@
   "module": "dist/rmu-es6.js",
   "scripts": {
     "test": "babel-node spec/_runTests.js",
-    "build": "rollup -c rollup.config.js"
+    "build": "rollup -c rollup.config.js",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",

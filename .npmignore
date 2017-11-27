@@ -4,4 +4,3 @@
 *.iws
 .idea_modules/
 node_modules/
-dist/

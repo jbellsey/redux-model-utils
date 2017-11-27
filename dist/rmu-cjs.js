@@ -113,6 +113,34 @@ function makeAsyncAction(cb) {
   };
 }
 
+// same as above. but for internal asyncs, we also pass the state back to the callback:
+//
+//   let actionMap = {
+//     saveUserData: {
+//       async: (params, state) => {}
+//     }
+//   }
+//
+// not available for public consumption.
+//
+function makeAsyncActionForModel(cb, model) {
+  for (var _len5 = arguments.length, argNames = Array(_len5 > 2 ? _len5 - 2 : 0), _key5 = 2; _key5 < _len5; _key5++) {
+    argNames[_key5 - 2] = arguments[_key5];
+  }
+
+  return function () {
+    for (var _len6 = arguments.length, args = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+      args[_key6] = arguments[_key6];
+    }
+
+    var argObject = makeAction(null, argNames, args),
+        thunk = function thunk() {
+      return cb(argObject, model.allData);
+    };
+    return getStore().dispatch(thunk);
+  };
+}
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
 } : function (obj) {
@@ -354,11 +382,17 @@ function isObject(x) {
   return x !== null && (typeof x === 'undefined' ? 'undefined' : _typeof(x)) === 'object';
 }
 
-// builds a function that returns a new map of selectors.
-// the new map is scoped to the model name. used for setting
-// up react-redux
+function objectHasKeys(x) {
+  return isObject(x) && Object.keys(x).length > 0;
+}
+
+var warnedReactSelectors = false;
+var warnedMerge = false;
+
+// selectors are individual functions: state => prop.
+// what we want is a single function: state => props (plural)
 //
-function externalizeSelectors(selectors, model) {
+function buildStateMappingFunction(selectors, model) {
 
   var modelName = model.name,
       namespace = model.options.propsNamespace;
@@ -370,19 +404,17 @@ function externalizeSelectors(selectors, model) {
 
   var mapStateToProps = function mapStateToProps(state) {
 
-    var props = Object.keys(selectors).reduce(function (map, sel) {
-
-      // note: older versions of this code had fallbacks for when state[modelName]
-      // didn't resolve correctly. this should never happen.
-      //
-      map[sel] = lookup(state, selectors[sel], modelName);
-      return map;
+    var props = Object.keys(selectors).reduce(function (props, selectorName) {
+      props[selectorName] = lookup(state, selectors[selectorName], modelName);
+      return props;
     }, {});
 
     return namespace ? defineProperty({}, namespace, props) : props;
   };
 
-  // add a hint that this mapping function is namespaced. we need this when merging (below)
+  // add a hint that this mapping function is namespaced. we need this when merging (below).
+  // the hint is added to the function itself, not to its output
+  //
   if (namespace) {
     Object.defineProperty(mapStateToProps, '_rmu_namespace', {
       enumerable: false,
@@ -395,24 +427,34 @@ function externalizeSelectors(selectors, model) {
 function reactify(model) {
 
   // the default map of selectors to props
-  model.reactSelectors = externalizeSelectors(model.selectors || {}, model);
+  model.mapStateToProps = buildStateMappingFunction(model.selectors || {}, model);
 
-  // the user can request additional maps be created. each key in the "propsMap"
-  // field on the model is converted into a new set of reactSelectors:
+  // a deprecated synonym:
+  Object.defineProperty(model, 'reactSelectors', {
+    enumerable: false,
+    get: function get$$1() {
+      if (!warnedReactSelectors) console.warn('redux-model-utils: The use of "model.reactSelectors" is deprecated. Use "model.mapStateToProps" instead.');
+      warnedReactSelectors = true;
+      return model.mapStateToProps;
+    }
+  });
+
+  // the user can request additional maps be created. each key in "model.propsMaps"
+  // is converted into a new mapping function, usable in @connect
   //
   //  model.propsMaps = {key1: selectors, key2: moreSelectors}
   //
   model.propsMaps = Object.keys(model.propsMaps || {}).reduce(function (newPropsMaps, oneMapName) {
-    newPropsMaps[oneMapName] = externalizeSelectors(model.propsMaps[oneMapName], model);
+    newPropsMaps[oneMapName] = buildStateMappingFunction(model.propsMaps[oneMapName], model);
     return newPropsMaps;
   }, {});
 }
 
-// merge the reactSelectors from multiple models for use in a single connected component.
+// merge the "mapStateToProps" outputs from multiple models for use in a single connected component.
 // duplicate keys will be last-in priority. accepts a list of either models or reactified maps.
-// for models that have a propsNamespace option, ALL of its propsMaps are namespaced.
+// for models that have a propsNamespace option, ALL of the propsMaps are namespaced.
 //
-function mergeReactSelectors() {
+function mergePropsMaps() {
   for (var _len = arguments.length, objects = Array(_len), _key = 0; _key < _len; _key++) {
     objects[_key] = arguments[_key];
   }
@@ -422,13 +464,16 @@ function mergeReactSelectors() {
     var props = {};
     (objects || []).forEach(function (oneObject) {
 
-      // is it a model? then pull its already-prepared reactSelectors.
+      // is it a model? then pull its already-prepared state-to-props function.
       // otherwise, it's a propsMap that has already been reactified
-      if (oneObject._rmu) oneObject = oneObject.reactSelectors;
+      var mapStateToProps = oneObject._rmu ? oneObject.mapStateToProps : oneObject;
+
+      // should never happen:
+      if (typeof mapStateToProps !== 'function') return;
 
       // namespaced props-maps need a bit more care, to ensure that we merge properly
-      var propsForThisMap = oneObject(state),
-          ns = oneObject._rmu_namespace;
+      var propsForThisMap = mapStateToProps(state),
+          ns = mapStateToProps._rmu_namespace;
       if (ns) {
         props[ns] = props[ns] || {};
         Object.assign(props[ns], propsForThisMap[ns]);
@@ -436,6 +481,12 @@ function mergeReactSelectors() {
     });
     return props;
   };
+}
+
+function mergeReactSelectors() {
+  if (!warnedMerge) console.warn('redux-model-utils: The use of "mergeReactSelectors" is deprecated. Use "mergePropsMaps" instead.');
+  warnedMerge = true;
+  return mergePropsMaps.apply(undefined, arguments);
 }
 
 // create direct getters for accessing the underlying model: "model.data.property"
@@ -465,42 +516,43 @@ function buildAccessors(model) {
   });
 }
 
-function isAction(obj) {
-  return isObject(obj) && (isFunction(obj.reducer) || isFunction(obj.async) || isFunction(obj.thunk));
-}
+// this function is not pure; it will modify "allReducers" in place
+//
+function mapActions(actionMap, namespace, model, allReducers) {
 
-function mapActions(actionMap, namespace, mapInfo) {
-  var actionTree = mapInfo.actionTree,
-      privateTree = mapInfo.privateTree,
-      allReducers = mapInfo.allReducers,
-      model = mapInfo.model;
-
+  var anyPrivate = false,
+      publicTree = void 0,
+      privateTree = void 0;
 
   Object.keys(actionMap).forEach(function (key) {
-    var actionDetails = actionMap[key],
-        params = actionDetails.params,
-        async = actionDetails.async,
-        thunk = actionDetails.thunk,
-        reducer = actionDetails.reducer,
-        _actionDetails$action = actionDetails.actionType,
-        actionType = _actionDetails$action === undefined ? namespace + '/' + key : _actionDetails$action,
-        isPrivateAction = actionDetails.private,
-        subActions = objectWithoutProperties(actionDetails, ['params', 'async', 'thunk', 'reducer', 'actionType', 'private']),
+    var _actionMap$key = actionMap[key],
+        params = _actionMap$key.params,
+        async = _actionMap$key.async,
+        thunk = _actionMap$key.thunk,
+        reducer = _actionMap$key.reducer,
+        _actionMap$key$action = _actionMap$key.actionType,
+        actionType = _actionMap$key$action === undefined ? namespace + '/' + key : _actionMap$key$action,
+        isPrivateAction = _actionMap$key.private,
+        subActions = objectWithoutProperties(_actionMap$key, ['params', 'async', 'thunk', 'reducer', 'actionType', 'private']),
         putHere = void 0,
         actionMethod = void 0;
 
     // first deal with the action at the top level of this object. it may or may not exist.
-    if (isAction(actionDetails)) {
-      if (isPrivateAction) {
-        putHere = privateTree;
-        mapInfo.anyPrivate = true;
-      } else putHere = actionTree;
 
+    if (isFunction(reducer) || isFunction(async) || isFunction(thunk)) {
+      if (isPrivateAction) {
+        putHere = privateTree = privateTree || {};
+        anyPrivate = true;
+      } else {
+        putHere = publicTree = publicTree || {};
+      }
+
+      // coerce params into an array
       if (typeof params === 'string') params = [params];else if (!params) params = [];
 
-      // add an action-creator. async is handled differently. (thunk is a synonym)
+      // add an action-creator. async/thunk is handled differently
       var asyncHandler = async || thunk;
-      if (asyncHandler) actionMethod = makeAsyncAction.apply(undefined, [asyncHandler].concat(toConsumableArray(params)));else {
+      if (asyncHandler) actionMethod = makeAsyncActionForModel.apply(undefined, [asyncHandler, model].concat(toConsumableArray(params)));else {
         actionMethod = makeActionCreator.apply(undefined, [actionType].concat(toConsumableArray(params)));
 
         // install the reducer. private reducers go here as well
@@ -514,57 +566,68 @@ function mapActions(actionMap, namespace, mapInfo) {
     // may not exist. so sub-actions may be nested inside a new object, or they may
     // be nested as new properties attached directly to the function at the root.
     //
-    if (Object.keys(subActions).length > 0) {
-      // set up mapInfo at the new nest level
-      mapInfo.actionTree = actionTree[key] = actionMethod || {};
-      mapInfo.privateTree = privateTree[key] = actionMethod || {}; // (yes, this needs its own empty object)
-
+    if (objectHasKeys(subActions)) {
       // scan all of the sub-actions
-      mapActions(actionDetails, key, mapInfo);
+      var _mapActions = mapActions(subActions, actionType, model, allReducers),
+          subPublicTree = _mapActions.publicTree,
+          subPrivateTree = _mapActions.privateTree,
+          subAnyPrivate = _mapActions.anyPrivate;
 
-      // put mapInfo back the way it was
-      mapInfo.actionTree = actionTree;
-      mapInfo.privateTree = privateTree;
+      // merge in the results
+
+
+      if (subPublicTree) {
+        publicTree = publicTree || {};
+        publicTree[key] = publicTree[key] || {};
+        Object.assign(publicTree[key], subPublicTree);
+      }
+
+      if (subPrivateTree) {
+        privateTree = privateTree || {};
+        privateTree[key] = privateTree[key] || {};
+        Object.assign(privateTree[key], subPrivateTree);
+      }
+
+      if (subAnyPrivate) anyPrivate = true;
     }
   });
+
+  return {
+    publicTree: publicTree,
+    privateTree: privateTree,
+    anyPrivate: anyPrivate
+  };
 }
 
 function parseActionMap(model) {
+  var allReducers = {},
+      _mapActions2 = mapActions(model.actionMap, model.name, model, allReducers),
+      publicTree = _mapActions2.publicTree,
+      privateTree = _mapActions2.privateTree,
+      anyPrivate = _mapActions2.anyPrivate;
 
-  // this blob will be used by mapActions to track status. consider it
-  // a giant return value
-  //
-  var mapInfo = {
-    model: model,
-    actionTree: {},
-    privateTree: {},
-    allReducers: {},
-    anyPrivate: false
-  };
 
-  mapActions(model.actionMap, model.name, mapInfo);
+  model.actions = publicTree;
+  model._rmu.privateActions = privateTree;
 
-  // the output of the actionMap: public actions, private actions, and a single master reducer
-  model.actions = mapInfo.actionTree;
-  model._rmu.privateActions = mapInfo.privateTree;
+  // the master reducer
   model.reducer = function () {
     var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : model.initialState;
     var action = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-    var reducer = mapInfo.allReducers[action.type];
+    var reducer = allReducers[action.type];
     if (reducer) state = reducer(state, action);
     return state;
   };
 
-  // this can be used one time only.
-  // it retrieves the list of private actions, and severs
-  // that list from the public model.
+  // this can be used one time only. it retrieves the list of
+  // private actions, and severs that list from the public model.
   //
-  if (mapInfo.anyPrivate) {
+  if (anyPrivate) {
     model.severPrivateActions = function () {
-      var trulyPrivateActions = model._rmu.privateActions;
+      // const trulyPrivateActions = model._rmu.privateActions;
       model._rmu.privateActions = model.severPrivateActions = null;
-      return trulyPrivateActions;
+      return privateTree;
     };
   }
 
@@ -628,14 +691,13 @@ function subscribe(selector, cb) {
 
 var allModelNames = [];
 
+
+
 function validateAndCleanup(model) {
 
   if (allModelNames.indexOf(model.name) !== -1) throw new Error('redux-model-utils: Two models have the same name (' + model.name + ')');else allModelNames.push(model.name);
 
-  if (model.reducer) {
-    console.log('MASTER REDUCER:', model);
-    console.trace('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
-  }
+  if (model.reducer) console.error('redux-model-utils: You cannot provide a master "reducer" method; it is created for you.');
 
   if (!(model.actionMap || model.initialState)) console.error('redux-model-utils: You must provide actionMap and initialState objects.');
 
@@ -681,11 +743,13 @@ function modelBuilder(model) {
   return model;
 }
 
+exports.mergePropsMaps = mergePropsMaps;
 exports.mergeReactSelectors = mergeReactSelectors;
 exports.modelBuilder = modelBuilder;
 exports.makeAction = makeAction;
 exports.makeActionCreator = makeActionCreator;
 exports.makeAsyncAction = makeAsyncAction;
+exports.makeAsyncActionForModel = makeAsyncActionForModel;
 exports.buildReducerMap = buildReducerMap;
 exports.getStore = getStore;
 exports.setStore = setStore;

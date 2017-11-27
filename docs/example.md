@@ -1,7 +1,8 @@
+# A complete example
 
 Here's a full example of a model which manages the geolocation of your device.
 It's simple but shows off many of the features of this library, as well as some
-useful patterns for constructing models.
+useful patterns for constructing models. 
 
 This model has one public action (`getLocation()`),
 which triggers an async request to the browser for its latitude and longitude.
@@ -10,66 +11,69 @@ coordinates back from the API. There is
 one observable property (`location`), which is an object with the device's
 coordinates.
 
-The view code will be shown next.
-
-# Model code
+## Model code
 
 ##### geo-model.js
 
 ```javascript
-let   reduxModelUtils  = require('redux-model-utils'),
-      model, privateActions;    // set below
+import {modelBuilder} from 'redux-model-utils';
 
 const
-    // prepare an empty store. you're doing this already.
+    // prepare an empty store
     initialState = {
-        location: {}
+      waiting:  false,
+      location: {}
     },
-    // dot-notation strings to look at properties of our model.
-    // in our case, the model is only one level deep, so there are no dots :)
+
+    // selectors expose properties of our model.
     selectors = {
-        location: 'location'    // could also have been a function: state => state.location
+      waiting:  state => state.waiting,
+      location: state => state.location,
+
+      // we also expose actions here
+      geoActions: () => model.actions
     },
+
     // the action map is internally converted into an "actions" object.
-    // two additional public actions (wait and stopWaiting) are installed because
-    // we set the "waitable" option below.
     actionMap = {
 
         // this action is private, usable only within this module.
         // see the use of "severPrivateActions" below
         _setLocation: {
-            private: true,
-            params:  'location', // only one param for the action creator
+          private: true,
+          params:  'location',
 
-            // the reducer is atomic, only used for this one action, which makes it trivial
-            reducer: (state, action) => Object.assign(state, {location: action.location})
+          // the reducer is atomic, only used for this one action, which makes it trivial
+          reducer: (state, action) => ({...state, location: action.location})
         },
 
-        // this is the only action that can be called by views. it takes no params,
-        // and is asynchronous
+        waiting: {
+          private: true,
+          params:  'status',   // turns the waiting flag on or off
+          reducer: (state, {status}) => ({...state, waiting: !!status})
+        },
+
+        // this is the only action that can be called by views. it takes no params, and
+        // is asynchronous. it could easily be rewritten to return a promise for chaining
         getLocation: {
-            async() {
+          async() {
 
-                // create some callbacks for the geolocation API
-                let err = () => {
-                        // call the private action to clear out the state
-                        privateActions._setLocation({});
+            // create some callbacks for the geolocation API
+            let err = () => {
+                  // call the private action to clear out the state
+                  privateActions._setLocation({});
+                  privateActions.waiting(false);
+                },
+                success = position => {
+                  // we call the private action here
+                  privateActions._setLocation({
+                    latitude:  position.coords.latitude,
+                    longitude: position.coords.longitude
+                  });
+                  privateActions.waiting(false);
+                };
 
-                        // this (synchronous) action is magically installed because
-                        // we flag the model as "waitable"
-                        model.actions.stopWaiting();
-                    },
-                    success = position => {
-                        // we call the private action here
-                        privateActions._setLocation({
-                            latitude:  position.coords.latitude,
-                            longitude: position.coords.longitude
-                        });
-                        model.actions.stopWaiting();
-                    };
-
-                // this (synchronous) action is installed by our use of "waitable" below
-                model.actions.wait();
+                privateActions.waiting(true);
 
                 // do the actual work: ask the browser where it is
                 if (navigator && "geolocation" in navigator)
@@ -82,30 +86,21 @@ const
 
 // run the model object through a custom tool ("modelBuilder"), which whips it into shape.
 // we cache a reference to the finished model, so we can call actions from inside this module
-model = reduxModelUtils.modelBuilder({
+let model = modelBuilder({
+      name: 'geo',
+      selectors,
+      actionMap,
+      initialState
+    }),
 
-    name: 'geo',
-    selectors,
-
-    // these properties are used to build an actions object
-    actionMap,
-    initialState,
-
-    // this causes two new actions to be installed (wait and stopWaiting), and a new
-    // property on the model's state called "waiting"
-    options: {
-        waitable: true
-    }
-});
-
-// separate out the private actions, so they can only be used
-// inside this module
-privateActions = model.severPrivateActions();
+    // separate out the private actions, so they can only be used
+    // inside this module
+    privateActions = model.severPrivateActions();
 
 export default model;
 ```
 
-# View code
+## View code
 
 The view which uses the model is trivial. Note that it doesn't need to
 import `redux-model-utils`; just the relevant model.
@@ -123,29 +118,32 @@ class MyGeoComponent extends React.Component{
 
     componentWillMount() {
         // start the async query here. it could also be invoked
-        // by a button handler, as in the vanilla example below
-        geoModel.actions.getLocation();
+        // by a button handler, as in the vanilla example below.
+        // we don't need to chain this here, but we could
+        //
+        let {geoActions} = this.props;
+        geoActions.getLocation();
     }
 
     render() {
         // the props are created by the connect() call below.
-        // they are mapped from the selectors above. (remember that "waiting"
-        // is installed by our magic trigger)
-        let spinner = this.props.waiting ? <Spinner /> : null,
-            output  = <LocationDisplay location={this.props.location} />;
+        // they are mapped from the selectors above. 
+        let {waiting, location} = this.props,
+            spinner = waiting ? <Spinner /> : null,
+            output  = <LocationDisplay location={location} />;
 
         return (
             <div>
-                {spinner}
-                {output}
+              {spinner}
+              {output}
             </div>
         );
     }
 };
 
-// "reactSelectors" is created for you, and ensures that your selectors are
-// all available as props. in this case, that means "location" and "waiting"
-export default connect(geoModel.reactSelectors)(MyGeoComponent);
+// "mapStateToProps" is created for you, and ensures that your selectors are all
+// available as props. in this case, that means "location", "waiting", and "geoActions"
+export default connect(geoModel.mapStateToProps)(MyGeoComponent);
 ```
 
 A similar view in vanilla JavaScript. In this case, we don't even have to import
@@ -163,61 +161,48 @@ btn.addEventListener('click', () => geoModel.actions.getLocation());
 
 // listen for changes to the location
 geoModel.subscribe(geoModel.selectors.location, loc => {
-    // do something with the new data. e.g.:
-    output.innerHTML = JSON.stringify(loc);
+  // do something with the new data. e.g.:
+  output.innerHTML = JSON.stringify(loc);
 });
 
 // listen for changes to the "waiting" flag, so we can put up a spinner
 geoModel.subscribe(geoModel.selectors.waiting, waiting => {
-    // do something with the new data. e.g.:
-    if (!!waiting)
-        console.log('waiting for location data');
-    else
-        console.log('finished waiting for location data');
+  // do something with the new data. e.g.:
+  if (!!waiting)
+    console.log('waiting for location data');
+  else
+    console.log('finished waiting for location data');
 });
 ```
 
-# Config
+## Config
 
 The following code illustrates how you need to create your store.
 This is done once per application, and it is largely boilerplate
 with little room to stray.
 
-Every line of code in the following example is required. You may use a different
-syntax (e.g., `import` instead of `require`), and you may have additional middleware
-to install, but you may not omit anything in the setup example here.
-
-The one exception: if your app does not use async actions, you can omit the
-installation and setup of `redux-thunk`.
 
 ##### store-setup.js
 ```javascript
-import {combineReducers, applyMiddleware} from 'redux';
-import thunk from 'redux-thunk';
-import {buildReducerMap, setStore, getStore} from 'redux-model-utils';
+import {compose, createStore, applyMiddleware, combineReducers} from 'redux';
+import {buildReducerMap, setStore} from 'redux-model-utils';
+import thunkMiddleware from 'redux-thunk';
 
-    // THIS IS NEW: build an array with all of your models
-let models = [
-        require('./models/appdata'),
-        require('./models/todos')
-        // ... etc ...
-    ],
+import appModel from './models/appdata';
+import todoModel from './models/todos';
 
-    // standard. add other middlewares here
-    createStoreWithMiddleware = applyMiddleware(thunk)(redux.createStore),
+export default function configureStore(initialState = {}) {
 
-    // THIS IS NEW: prepare an object for combineReducers
-    allReducers = buildReducerMap(models),
+  let allModels     = [appModel, todoModel],
+      allReducers   = buildReducerMap(allModels),
+      masterReducer = combineReducers(allReducers),
 
-    // THIS IS REQUIRED (but you might already be doing it):
-    // unify all models into a single reducer
-    masterReducer = combineReducers(allReducers),
+      middleware = [applyMiddleware(thunkMiddleware)],
+      store      = compose(middleware)(createStore)(masterReducer, initialState);
 
-    masterStore = createStoreWithMiddleware(masterReducer);
-
-// THIS IS NEW:
-setStore(masterStore);
-export default masterStore;
+  setStore(store);
+  return store;
+}
 ```
 
 # Deferred model loading
@@ -228,9 +213,9 @@ If you have a model that's lazy-loaded, you can easily install it and its reduce
 // add the following code to "store-setup.js" above
 //
 export function injectModel(model) {
-  models.push(model);
+  allModels.push(model);
 
-  let allReducers   = buildReducerMap(models),
+  let allReducers   = buildReducerMap(allModels),
       masterReducer = combineReducers(allReducers);
   getStore().replaceReducer(masterReducer);
 }

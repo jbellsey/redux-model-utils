@@ -1,9 +1,9 @@
 
 # Selectors
 
-Selectors are recipes; they hold the algorithm to retrieving a usable value
+Selectors are recipes; they hold the algorithm for retrieving a usable value
 from your store. Sometimes the recipe is simple (`return state.userID`), and
-sometimes it's complex (`return visibleTodosBeforeDate(state)`).
+sometimes it's complex (`return unexpiredVisibleTodos(state)`).
 
 They are mainly used to generate props from state for React components.
 But they can also be used to watch properties in your model from somewhere
@@ -21,7 +21,7 @@ let initialState = {
       userID: 0,
       preferences: {
         colorScheme: 'dark',
-        fontSize: 'large'
+        fontSize:    'large'
       }
     };
 ```

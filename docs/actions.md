@@ -119,16 +119,16 @@ let actionMap = {
 
     // some standard synchronous actions
     wait: {
-      reducer: state => ({...state, {waiting: true}})
+      reducer: state => ({...state, waiting: true})
     },
     stopWaiting: {
-      reducer: state => ({...state, {waiting: false}})
-    }
+      reducer: state => ({...state, waiting: false})
+    },
 
     // example of an async action with no params: a one-second timer.
     // it returns a promise for chaining
     timer1000: {
-        async: () => new Promise(resolve => setTimeout(resolve, 1000))
+      async: () => new Promise(resolve => setTimeout(resolve, 1000))
     },
 
     // a more typical async action
@@ -224,7 +224,7 @@ let actionMap = {
     load: {
       async async(params) {/* ... */}
     },
-    
+
     // "async async" got you down? use "thunk":
     update: {
       thunk: async (params) => {/* ... */}
@@ -284,26 +284,26 @@ let actionMap = {
 	    // this action is private. it's called after the (public) save
 	    // operation is complete
 	    _storeData: {
-	        private: true,  // flag it
-	        params: 'data',
-	        reducer: (state, action) => ({...state, {data: action.data}})
+	      private: true,  // flag it
+	      params: 'data',
+	      reducer: (state, action) => ({...state, data: action.data})
 	    },
-	
+
 	    // this is the public interface for saving data. when the api returns,
 	    // we call the private action, to merge the data into the store
 	    save: {
-	        params: 'recordID',
-	        async({recordID}) {
-	            // note that the private action is not in the model's "actions" object
-	            return api.save(recordID).then(
-	                data => privateActions._storeData(data)
-	            )
-	        }
+	      params: 'recordID',
+	      async({recordID}) {
+            // note that the private action is not in the model's "actions" object
+            return api.save(recordID).then(
+              data => privateActions._storeData(data)
+            )
+          }
 	    }
 	},
-	
+
 	model = reduxModelUtils.modelBuilder( /* ... */ ),
-	
+
 	// here we remove all private actions from the model's actions object, and
 	// attach them to a local variable which is only accessible inside this module
 	privateActions = model.severPrivateActions();
