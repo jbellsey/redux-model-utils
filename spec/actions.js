@@ -70,8 +70,8 @@ describe('ACTION MAP module:', () => {
         size:     'prefs.size',
         colorFnc: state => state.prefs.color
       },
-      counter   = 0,
       modelSeed = {
+        name: 'test-model',
         actionMap: {
           makeBlue: {
             reducer: state => ({...state, prefs: {color: 'blue'}})
@@ -81,15 +81,23 @@ describe('ACTION MAP module:', () => {
             reducer: (state, {color}) => ({...state, prefs: {color}})
           },
           changeColorAndSize: {
-            actionType:    'catapult',
-            params:  ['color', 'size'],
-            reducer: (state, {color, size}) => ({...state, prefs: {color, size}})
+            actionType: 'custom/action/type/change/color',
+            params:     ['color', 'size'],
+            reducer:    (state, {color, size}) => ({...state, prefs: {color, size}})
           },
           timer100: {
             async: () => tick(10)
           },
           timer100_thunk: {
             thunk: () => tick(10)
+          },
+          asyncDarken: {
+            async: (params, state) => {     // peeks into state
+              return tick(0)
+                .then(() => {
+                  model.actions.makeAnyColor(`dark_${state.prefs.color}`);
+                })
+            }
           },
           privateAction: {
             private: true,
@@ -114,7 +122,7 @@ describe('ACTION MAP module:', () => {
     let store;
 
     beforeEach(() => {
-      modelSeed.name = `test-model-${counter++}`;
+      refreshForTesting();
       model = modelBuilder(clone(modelSeed));
       store = mockStore(model);
     });
@@ -141,6 +149,15 @@ describe('ACTION MAP module:', () => {
 
     it('runs an async action with the "thunk" option', done => {
       model.actions.timer100_thunk().then(done);
+    });
+
+    it('runs an async action that peeks into state', done => {
+      model.actions.makeAnyColor('taupe');
+      model.actions.asyncDarken()
+        .then(() => {
+          expect(store.getModelState().prefs.color).toBe('dark_taupe');
+        })
+        .then(done);
     });
 
     it('keeps private actions separate', () => {
@@ -400,16 +417,13 @@ describe('SHARED ACTION TYPES & multiple models:', () => {
 
   describe('parses an action map and:', () => {
 
-    let store, model1, model2,
-        counter = 100;
+    let store, model1, model2;
 
     beforeEach(() => {
-      ++counter;
-      M1.name = `M1-${counter}`;
-      M2.name = `M2-${counter}`;
-      model1  = modelBuilder(clone(M1));
-      model2  = modelBuilder(clone(M2));
-      store   = mockStore([model1, model2]);
+      refreshForTesting();
+      model1 = modelBuilder(clone(M1));
+      model2 = modelBuilder(clone(M2));
+      store  = mockStore([model1, model2]);
     });
 
     it('run independent actions independently', () => {

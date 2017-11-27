@@ -103,10 +103,14 @@ module.exports = reduxModelUtils.modelBuilder({
 ## Asynchronous actions in an action map
 
 To build an asynchronous action using an action map, omit the `reducer` key,
-and instead include an `async` method
-in your action definition. This is a function which takes a `params` object,
-just as a normal reducer gets an `action` object as a parameter. The `async`
-function can return a promise for chaining.
+and instead include an `async` method in your action definition. 
+
+The function signature is `(params, state) => {}`. You may not need to access
+the model's state, so you can usually omit that function parameter. (Yes, the
+parameter order is the reverse of that on reducers, in which `state` is the first
+parameter.)
+
+You can return a promise for chaining.
 
 The action definition for an asynchronous action can also include a `params` key.
 
@@ -129,21 +133,38 @@ let actionMap = {
 
     // a more typical async action
     save: {
-        params: 'record',
-        async(params) {
-            // you can call synchronous actions inside an async action.
-            model.actions.wait();
+      params: 'record',
+      async(params) {
+        // you can call synchronous actions inside an async action.
+        model.actions.wait();
 
-            // we return a promise, which callers can use for chaining.
-            // we also invoke another synchronous action after the api returns.
-            return api.save(params.recordID)
-                      .then(model.actions.stopWaiting);
-        }
+        // we return a promise, which callers can use for chaining.
+        // we also invoke another synchronous action after the api returns.
+        return api.save(params.recordID)
+          .then(model.actions.stopWaiting);
+      }
+    },
+    
+    // this async action peeks into model state
+    addTodo: {
+      params: 'text',
+      async: (params, state) => {
+        const {text} = params,
+              {userID} = state,  // peek into this model's state for the user ID
+              newTodo = {text, userID};
+        model.actions.optimisticallySaveTodo(newTodo);
+        return api.saveTodo(newTodo)
+	        .catch(() => {/* handle errors */}
+      }
+    }
+
+    optimisticallySaveTodo: {
+      /* ... */
     }
 };
 
 // keep a reference to the constructed model, so we can call its actions above
-let model = reduxModelUtils.modelBuilder( /* ... */ );
+let model = modelBuilder( /* ... */ );
 export default model;
 
 // ... then later, in your view ...
@@ -159,54 +180,57 @@ actions. Simply use the `thunk` key instead of `async`.
 ```javascript
 let actionMap = {
 
-    // synchronous actions
-    storeUserData: {
-        params: 'data',
-        reducer: (state, action) => {/* ... */}
-    },
-    storeDeviceData: {
-        params: 'data',
-        reducer: (state, action) => {/* ... */}
-    },
-
     // thunk. not async.
     storeAllData: {
-        params: ['userData', 'deviceData'],
-        thunk: params => {
-            model.actions.storeUserData(params.userData);
-            model.actions.storeDeviceData(params.deviceData);
-        }
+      params: ['userData', 'deviceData'],
+      thunk: params => {
+        model.actions.storeUserData(params.userData);
+        model.actions.storeDeviceData(params.deviceData);
+      }
+    },
+
+    // synchronous actions
+    storeUserData: {
+      params: 'data',
+      reducer: (state, action) => {/* ... */}
+    },
+    storeDeviceData: {
+      params: 'data',
+      reducer: (state, action) => {/* ... */}
     }
 };
 ```
 
 ## Async/await
 
-Yes, not a problem. It may be confusing that the language keyword ("async") is the same
-as the library keyword ("async"). Feelf ree to use the library keyword "thunk" instead,
-as it's internally identical.
+You can use `async/await` keywords on your async actions, for a
+simpler, more fluent style of handling asynchronous behavior.
+
+It may be confusing that the library keyword (`async`) is the same
+as the language keyword (`async`). Feel free to use the library 
+keyword `thunk` instead, as it's internally identical.
 
 
 ```javascript
 let actionMap = {
 
     save: {
-        params: ['id', 'data'],
-        async: async ({id, data}) => {
-          const apiResult = await saveDataToApi(id, data);
-          return apiResult;
-        }
+      params: ['id', 'data'],
+      async: async ({id, data}) => {
+        const apiResult = await saveDataToApi(id, data);
+        return apiResult;
+      }
     },
     load: {
-        async async(params) {/* ... */}
+      async async(params) {/* ... */}
     },
     
     // "async async" got you down? use "thunk":
     update: {
-       thunk: async (params) => {/* ... */}
+      thunk: async (params) => {/* ... */}
     },
     update: {
-       async thunk(params) {/* ... */}
+      async thunk(params) {/* ... */}
     }
 };
 ```
@@ -214,7 +238,7 @@ let actionMap = {
 ## About action types
 
 Action types are created for you automatically. You should not rely on
-them; think of them as an internal impelementation detail.
+them; think of them as an private, internal impelementation detail.
 
 However, you can override this behavior, and manually assign your own
 action type. This is useful for two main reasons:
@@ -232,9 +256,9 @@ To manually assign an action type, use the `actionType` property on an action de
 ```javascript
 let actionMap = {
     addNotification: {
-        actionType: 'MISC/NOTIFICATION/ADD',  // your own custom action type
-        params:     ['text', 'link'],
-        reducer:    (state, action) => {/* ... */}
+      actionType: 'MISC/NOTIFICATION/ADD',  // your own custom action type
+      params:     ['text', 'link'],
+      reducer:    (state, action) => {/* ... */}
     }
 };
 ```
@@ -265,14 +289,13 @@ let actionMap = {
 	        reducer: (state, action) => ({...state, {data: action.data}})
 	    },
 	
-	    // this is the public interface for saving data. when the
-	    // api returns, we call the private action, to merge the
-	    // new data into the store
+	    // this is the public interface for saving data. when the api returns,
+	    // we call the private action, to merge the data into the store
 	    save: {
 	        params: 'recordID',
-	        async(params) {
+	        async({recordID}) {
 	            // note that the private action is not in the model's "actions" object
-	            return api.save(params.recordID).then(
+	            return api.save(recordID).then(
 	                data => privateActions._storeData(data)
 	            )
 	        }
@@ -304,7 +327,8 @@ action is explicit.
 You can organize your action map however you like. Actions can be nested, giving you the
 flexibility to group actions together. There is no technical limit to the depth of nesting.
 
-Note that nested actions are not automatically private. 
+Note that each action is independently public or private. You can nest a public action
+inside a private action (and vice versa).
 
 ```javascript
 let actionMap = {
@@ -315,14 +339,14 @@ let actionMap = {
     load: {
       params: 'id',
       async: ({id}) => apiCall(id).then(userData => {
-        // the private action "_store" is nested inside privateActions
-        privateActions.user.load._store(userData);
+        // the private action "_store" is deeply nested in privateActions
+        privateActions.user.load._storeUser(userData);
       }),
 
-      // this private action is used only here to store the result of the query.
+      // this private action is used to store the result of the query.
       // it's nested inside "load" to clarify its relationship. and it's private
       // to prevent meddling outsiders from using it.
-      _store: {
+      _storeUser: {
         private: true,
         params: 'userData',
         reducer: () => {}
@@ -346,7 +370,7 @@ let actionMap = {
   this will create the following actions:
 
       model.actions.user.load(id)
-      privateActions.user.load._store(userData)
+      privateActions.user.load._storeUser(userData)
       model.action.user.save(userData)
 
       model.actions.prefs.save(prefs)
@@ -366,9 +390,9 @@ Each action definition can have one or more of the following keys:
 
 * `async` or `thunk`: these are synonyms, and they are mutually exclusive, along with `reducer`. (You must provide
    exactly one key out of the three.) You do not modify the store directly in an async thunk. Instead, you can run
-   asynchronous operations and fire off normal actions as needed. It takes a single parameter, an object containing
-   the parameters defined in `params`. The return value of your thunk is passed back to the caller, to make it easy
-   to chain promises.
+   asynchronous operations and fire off normal actions as needed. It takes two parameters: (1) an object containing
+   the parameters defined in `params`, and the model's slice of the store `state`. The return value of your thunk
+   is passed back to the caller, to make it easy to chain promises.
 
 * `actionType`: optionally indicate the action type (string) to be used for this action. 
    See the discussion above.

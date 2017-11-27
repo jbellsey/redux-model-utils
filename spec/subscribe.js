@@ -1,13 +1,12 @@
 import clone from 'clone';
 import assignDeep from 'assign-deep';
-import {modelBuilder} from '../src/model';
+import {modelBuilder, refreshForTesting} from '../src/model';
 import mockStore from './support/mock-store';
 import subscribe from '../src/subscribe';
 
 describe('SUBSCRIBE module:', () => {
 
-  let counter   = 0,
-      initial   = {
+  let initial   = {
         userID: 0,
         prefs:  {
           color: 'red',
@@ -15,6 +14,7 @@ describe('SUBSCRIBE module:', () => {
         }
       },
       modelSeed = {
+        name: 'subscribe-model',
         initialState: initial,
         actionMap: {
           setColor: {
@@ -35,7 +35,7 @@ describe('SUBSCRIBE module:', () => {
       model;
 
   beforeEach(() => {
-    modelSeed.name = `subscribe-model-${counter++}`;
+    refreshForTesting();
     model = modelBuilder(clone(modelSeed));
   });
 

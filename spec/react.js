@@ -1,6 +1,6 @@
 import clone from 'clone';
 import assignDeep from 'assign-deep';
-import {modelBuilder} from '../src/model';
+import {modelBuilder, refreshForTesting} from '../src/model';
 import {mergePropsMaps, mergeReactSelectors} from '../src/react';
 import mockStore from './support/mock-store';
 
@@ -13,7 +13,6 @@ describe('REACT module:', () => {
           size:  'large'
         }
       },
-      counter   = 0,
       modelSeed = {
         actionMap:      {
           // a single action, which we only call via the selector
@@ -30,7 +29,8 @@ describe('REACT module:', () => {
         }
       },
       model,
-      makeModel = (seed = modelSeed, name = `react-model-${counter++}`) => {
+      makeModel = (seed = modelSeed, name = `react-model`) => {
+        refreshForTesting();
         seed = clone(seed);
         seed.name = name;
         return model = modelBuilder(seed)

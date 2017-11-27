@@ -1,4 +1,4 @@
-import {makeActionCreator, makeAsyncAction} from './actions';
+import {makeActionCreator, makeAsyncActionForModel} from './actions';
 import {isObject, objectHasKeys, isFunction} from './utils';
 
 
@@ -51,7 +51,7 @@ function mapActions(actionMap, namespace, model, allReducers) {
       // add an action-creator. async/thunk is handled differently
       const asyncHandler = async || thunk;
       if (asyncHandler)
-        actionMethod = makeAsyncAction(asyncHandler, ...params);
+        actionMethod = makeAsyncActionForModel(asyncHandler, model, ...params);
       else {
         actionMethod = makeActionCreator(actionType, ...params);
 

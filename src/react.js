@@ -1,5 +1,8 @@
 import {lookup} from './utils';
 
+let warnedReactSelectors = false,
+    warnedMerge = false;
+
 // selectors are individual functions: state => prop.
 // what we want is a single function: state => props (plural)
 //
@@ -44,7 +47,9 @@ export function reactify(model) {
   Object.defineProperty(model, 'reactSelectors', {
     enumerable: false,
     get: () => {
-      console.warn('redux-model-utils: The use of "model.reactSelectors" is deprecated. Use "model.mapStateToProps" instead.');
+      if (!warnedReactSelectors)
+        console.warn('redux-model-utils: The use of "model.reactSelectors" is deprecated. Use "model.mapStateToProps" instead.');
+      warnedReactSelectors = true;
       return model.mapStateToProps;
     }
   });
@@ -93,6 +98,8 @@ export function mergePropsMaps(...objects) {
 }
 
 export function mergeReactSelectors(...objects) {
-  console.warn('redux-model-utils: The use of "mergeReactSelectors" is deprecated. Use "mergePropsMaps" instead.');
+  if (!warnedMerge)
+    console.warn('redux-model-utils: The use of "mergeReactSelectors" is deprecated. Use "mergePropsMaps" instead.');
+  warnedMerge = true;
   return mergePropsMaps(...objects);
 }

@@ -52,3 +52,21 @@ export function makeAsyncAction(cb, ...argNames) {
     return getStore().dispatch(thunk);
   }
 }
+
+// same as above. but for internal asyncs, we also pass the state back to the callback:
+//
+//   let actionMap = {
+//     saveUserData: {
+//       async: (params, state) => {}
+//     }
+//   }
+//
+// not available for public consumption.
+//
+export function makeAsyncActionForModel(cb, model, ...argNames) {
+  return (...args) => {
+    let argObject = makeAction(null, argNames, args),
+        thunk = () => cb(argObject, model.allData);
+    return getStore().dispatch(thunk);
+  }
+}
