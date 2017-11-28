@@ -6,7 +6,7 @@ To install:
 npm install --save redux-model-utils
 ```
 
-It has no dependencies. The package is about 3k (min/gzip).
+It has no dependencies. The package is about 2k (min/gzip).
 
 In addition, you must make the following changes or additions to your code:
 

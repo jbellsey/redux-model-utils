@@ -53,7 +53,7 @@ let selectors = {
 ```
 
 If you like, you can also use [Reselect](https://github.com/reactjs/reselect)
-to memoize your selectors.
+to memoize your function selectors.
 
 
 # Exposing model actions as a selector
@@ -89,7 +89,7 @@ const LogoutButton = props => {
 # React
 
 The selectors are used when connecting your model to a component.
-See [react.md](our React docs).
+See [our React docs](react.md).
 
 # Data accessors
 
@@ -109,7 +109,7 @@ retrieve calculated data this way. You also need to know the structure
 of your data. So this should typically only be used inside your model:
 
 ```javascript
-let allData = prefsModel.allData,
+let allData = userModel.allData,
     {userID, preferences: {color, fontSize}} = allData;
 ```
 

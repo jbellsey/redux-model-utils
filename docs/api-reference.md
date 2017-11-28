@@ -99,8 +99,8 @@ export default modelBuilder({
 
 ### makeActionCreator(type, ...argNames)
 
-**Note**: If you're using action maps, you won't need this tool (or the next one).
-They are provided as a convenience for hybrid installations.
+**Note**: This tool and the next one are provided as a convenience for hybrid
+installations. You do not need them for models or action maps.
 
 You've probably already used a similar tool if you've used Redux before.
 See [the docs](https://redux.js.org/docs/basics/Actions.html).
@@ -110,8 +110,8 @@ dispatch, just don't use this tool.
 
 ```javascript
 let actions = {
-  incr: makeActionCreator('CTR_INCR', 'value'),
-  decr: makeActionCreator('CTR_DECR', 'value'),
+  incr: makeActionCreator('COUNTER_INCR', 'value'),
+  decr: makeActionCreator('COUNTER_DECR', 'value'),
 };
 ```
 
@@ -153,7 +153,7 @@ let actionMap = {
 
     model = modelBuilder( /* ... */ ),
 
-    // call "severPrivateActions"; this can only be done once. it removes the 
+    // call "severPrivateActions". this can only be done once. it removes the 
     // private actions from the main "model.actions" object, and returns a new
     // object map with all of the private actions in the model
     //

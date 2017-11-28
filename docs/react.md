@@ -92,15 +92,18 @@ let selectors = {
 };
 ```
 
-## One component, many models
+(You can also use the excellent [Reselect](https://github.com/reactjs/reselect)
+library, which memoizes your selectors.)
 
-If your component needs props from more than one model, you can combine them with
-`mergePropsMaps`:
+## One view, many models
+
+If your connected component needs props from more than one model,
+you can combine them with `mergePropsMaps`:
 
 ```javascript
 import {mergePropsMaps} from 'redux-model-utils';
 
-// here we import any models whose props we need
+// import any models whose props we need
 import uiModel   './models/ui.js';
 import todoModel './models/todo.js';
 
@@ -119,29 +122,26 @@ maps, as needed.
 
 ```javascript
 export default connect(
-    mergePropsMaps(
-        // pass in a model to get its reactSelectors...
-        uiModel,
+  mergePropsMaps(
+    // pass in a model to get its reactSelectors...
+    uiModel,
 
-        // ...or a props map, for a filtered list (see below)
-        todoModel.propsMaps.countOnly
-    )
+    // ...or a props map, for a filtered list (see below)
+    todoModel.propsMaps.countOnly
+  )
 )(TodoList);
 ```
 
-## One model, many components
+## One model, many views
 
-If you need to use a model's values as props in multiple components,
-you can reuse the main `mapStateToProps` function that is created 
-automatically for you.
+If you need to use a model's values as props in multiple connected components,
+you can pass the main `mapStateToProps` function to each of them, and they
+will each get the same set of props (from your selectors).
 
 However, this may be inefficient, as each prop needs to be calculated
-from its corresponding selector, each time your component is rendered.
+from its corresponding selector each time your component is rendered.
 You can instead create multiple custom selector maps for use
-in different components.
-
-(You can also use the excellent [Reselect](https://github.com/reactjs/reselect)
-library, which memoizes your selectors.)
+in different connected components.
 
 Consider our Todo example. You might have a sidebar component which
 only needs the count of open todos. Building a custom props map
@@ -168,17 +168,20 @@ let countOnlySelectors = {
 // to attach the custom selectors, embed them into "propsMaps"
 //
 export let todoModel = reduxModelUtils.modelBuilder({
-    name: 'todos',
-    actionMap,
-    initialState,
+  name: 'todos',
+  actionMap,
+  initialState,
 
-    // this creates the default "mapStateToProps" function for you
-    selectors,
+  // this creates the default "mapStateToProps" function for you
+  selectors,
 
-    // and this creates as many custom props maps as you need
-    propsMaps: {
-      countOnly: countOnlySelectors
-    }
+  // this creates as many custom props maps as you need. it will
+  // create "model.propsMaps.countOnly", which in turn creates a
+  // selector (and a prop) called "todoCount"
+  //
+  propsMaps: {
+    countOnly: countOnlySelectors
+  }
 });
 
 // ... then, in your main view ...
@@ -229,3 +232,6 @@ class TodoList extends Component {
 }
 ```
 
+When you set up `propsNamespace` this way, ALL props for your model are namespaced.
+This applies to the default set of props (`model.mapStateToProps`) as well as
+all of your custom props maps (`model.propsMaps.*`).

@@ -25,7 +25,7 @@ const
       location: {}
     },
 
-    // selectors expose properties of our model.
+    // selectors expose properties of our model
     selectors = {
       waiting:  state => state.waiting,
       location: state => state.location,
@@ -37,20 +37,21 @@ const
     // the action map is internally converted into an "actions" object.
     actionMap = {
 
-        // this action is private, usable only within this module.
+        // these actions are private, usable only within this module.
         // see the use of "severPrivateActions" below
-        _setLocation: {
-          private: true,
-          params:  'location',
-
-          // the reducer is atomic, only used for this one action, which makes it trivial
-          reducer: (state, action) => ({...state, location: action.location})
-        },
-
+        //
         waiting: {
           private: true,
           params:  'status',   // turns the waiting flag on or off
+
+          // the reducer is atomic, only used for this one action, which makes it trivial
           reducer: (state, {status}) => ({...state, waiting: !!status})
+        },
+
+        _setLocation: {
+          private: true,
+          params:  'location',
+          reducer: (state, action) => ({...state, location: action.location})
         },
 
         // this is the only action that can be called by views. it takes no params, and
@@ -65,7 +66,6 @@ const
                   privateActions.waiting(false);
                 },
                 success = position => {
-                  // we call the private action here
                   privateActions._setLocation({
                     latitude:  position.coords.latitude,
                     longitude: position.coords.longitude
@@ -84,7 +84,7 @@ const
         }
     };
 
-// run the model object through a custom tool ("modelBuilder"), which whips it into shape.
+// run the model object through our custom tool ("modelBuilder"), which whips it into shape.
 // we cache a reference to the finished model, so we can call actions from inside this module
 let model = modelBuilder({
       name: 'geo',
@@ -127,7 +127,7 @@ class MyGeoComponent extends React.Component{
 
     render() {
         // the props are created by the connect() call below.
-        // they are mapped from the selectors above. 
+        // they are calculated from the model's selectors
         let {waiting, location} = this.props,
             spinner = waiting ? <Spinner /> : null,
             output  = <LocationDisplay location={location} />;
@@ -141,6 +141,9 @@ class MyGeoComponent extends React.Component{
     }
 };
 
+// we typically export unconnected components for testing
+export {MyGeoComponent};
+
 // "mapStateToProps" is created for you, and ensures that your selectors are all
 // available as props. in this case, that means "location", "waiting", and "geoActions"
 export default connect(geoModel.mapStateToProps)(MyGeoComponent);
@@ -152,8 +155,9 @@ any Redux code.
 ##### geo-view.js
 
 ```javascript
-let geoModel = require('./models/geo'),
-    btn      = document.getElementById('geoTrigger'),
+import geoModel from './models/geo';
+
+let btn      = document.getElementById('geoTrigger'),
     output   = document.getElementById('geoOutput');
 
 // trigger a model action when the button is clicked
@@ -165,7 +169,10 @@ geoModel.subscribe(geoModel.selectors.location, loc => {
   output.innerHTML = JSON.stringify(loc);
 });
 
-// listen for changes to the "waiting" flag, so we can put up a spinner
+// listen for changes to the "waiting" flag, so we can put up a spinner.
+// note that the action for modifying "waiting" is private, but the
+// selector that exposes its value is public
+//
 geoModel.subscribe(geoModel.selectors.waiting, waiting => {
   // do something with the new data. e.g.:
   if (!!waiting)
