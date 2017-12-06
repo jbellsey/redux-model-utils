@@ -419,11 +419,11 @@ function mapActions(actionMap, namespace, model, allReducers) {
         async = _actionMap$key.async,
         thunk = _actionMap$key.thunk,
         reducer = _actionMap$key.reducer,
-        _actionMap$key$action = _actionMap$key.actionType,
-        actionType = _actionMap$key$action === undefined ? namespace + '/' + key : _actionMap$key$action,
+        manualActionType = _actionMap$key.actionType,
         isPrivateAction = _actionMap$key.private,
         subActions = objectWithoutProperties(_actionMap$key, ['params', 'async', 'thunk', 'reducer', 'actionType', 'private']),
         putHere = void 0,
+        actionType = manualActionType || namespace + '/' + key,
         actionMethod = void 0;
 
     // first deal with the action at the top level of this object. it may or may not exist.
@@ -431,6 +431,9 @@ function mapActions(actionMap, namespace, model, allReducers) {
     if (isFunction(reducer) || isFunction(async) || isFunction(thunk)) {
       if (isPrivateAction) {
         putHere = privateTree = privateTree || {};
+
+        // private actions get "!" prepended to the action type (unless the user manually assigns it)
+        if (!manualActionType) actionType = '!' + actionType;
         anyPrivate = true;
       } else {
         putHere = publicTree = publicTree || {};
@@ -611,12 +614,8 @@ function modelBuilder(model) {
   model.subscribe = subscribe;
 
   //----------
-  // the user must specify actions & reducer in the form of an actionMap
+  // the user must specify actions in the form of an actionMap
   parseActionMap(model);
-
-  // TODO: make ez-selectors
-  // i.e., if no selectors are provided, map the top level of the initialState object.
-  // so this will work for action maps only
 
   //----------
   // for usage of this library with react, prepare a selector map for use with

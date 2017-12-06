@@ -15,19 +15,24 @@ function mapActions(actionMap, namespace, model, allReducers) {
     let {
           // these are the reserved words that indicate an action
           params, async, thunk, reducer,
-          actionType = `${namespace}/${key}`,
+          actionType: manualActionType,
           private: isPrivateAction,
 
           // everything else becomes a sub-action
           ...subActions
         } = actionMap[key],
         putHere,
+        actionType = manualActionType || `${namespace}/${key}`,
         actionMethod;
 
     // first deal with the action at the top level of this object. it may or may not exist.
     if (isFunction(reducer) || isFunction(async) || isFunction(thunk)) {
       if (isPrivateAction) {
         putHere = privateTree = privateTree || {};
+
+        // private actions get "!" prepended to the action type (unless the user manually assigns it)
+        if (!manualActionType)
+          actionType = `!${actionType}`;
         anyPrivate = true;
       }
       else {

@@ -23,9 +23,6 @@ export default {
     }),
     commonjs()
   ],
-
-  // peer deps should not be embedded
-  // external: id => id === 'axios' || /lodash/.test(id),
   output: [{
     format: 'cjs',
     file: 'dist/rmu-cjs.js'

@@ -46,12 +46,8 @@ export function modelBuilder(model) {
   model.subscribe = subscribe;
 
   //----------
-  // the user must specify actions & reducer in the form of an actionMap
+  // the user must specify actions in the form of an actionMap
   parseActionMap(model);
-
-  // TODO: make ez-selectors
-  // i.e., if no selectors are provided, map the top level of the initialState object.
-  // so this will work for action maps only
 
   //----------
   // for usage of this library with react, prepare a selector map for use with
